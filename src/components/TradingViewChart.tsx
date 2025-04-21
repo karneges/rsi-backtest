@@ -89,7 +89,7 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({ result, hist
       symbol: config.symbol,
       interval: config.timeframe.replace('m', '') as ResolutionString,
       container: 'tv_chart_container',
-      library_path: '/charting-library/',
+      library_path: '/rsi-backtest/charting-library/',
       locale: 'en',
       timezone: 'Europe/Moscow',
       disabled_features: [

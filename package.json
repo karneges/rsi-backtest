@@ -32,7 +32,7 @@
     "axios": "^0.21.0",
     "base64-to-uint8array": "^1.0.0",
     "bignumber.js": "^9.0.2",
-    "bip39": "^3.0.4", 
+    "bip39": "^3.0.4",
     "borsh": "^2.0.0",
     "bs58": "^4.0.1",
     "bybit-api": "^3.10.27",
@@ -59,7 +59,9 @@
     "vite": "^5.0.0"
   },
   "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
     "execa": "^4.1.0",
+    "fs-extra": "^11.3.0",
     "tree-kill": "^1.2.2"
   }
 }

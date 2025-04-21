@@ -12,6 +12,7 @@ export interface TradeConfig {
   positionAddDelay: number; // Minimum delay in milliseconds between adding to positions
   symbol: string;
   timeframe: string;
+  limit: number; // Number of candlesticks to fetch
 }
 
 export type TradeType = "LONG" | "SHORT";

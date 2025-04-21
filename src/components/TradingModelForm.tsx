@@ -20,6 +20,7 @@ export const TradingModelForm: React.FC<TradingModelFormProps> = ({ onSubmit }) 
         minProfitPercent: 1,
         maxLossEntries: 3,
         positionAddDelay: 60000, // 60 seconds in milliseconds
+        limit: 200, // Default value for number of candlesticks
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -64,6 +65,20 @@ export const TradingModelForm: React.FC<TradingModelFormProps> = ({ onSubmit }) 
                         <option value="4h">4 hours</option>
                         <option value="1d">1 day</option>
                     </select>
+                </div>
+
+                <div className="form-group">
+                    <label htmlFor="limit">Number of Candlesticks</label>
+                    <input
+                        type="number"
+                        id="limit"
+                        name="limit"
+                        value={config.limit}
+                        onChange={handleChange}
+                        min="50"
+                        max="1000"
+                        step="50"
+                    />
                 </div>
             </div>
 

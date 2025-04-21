@@ -41,7 +41,7 @@ const App: React.FC = () => {
                 data = await okxService.getCandlesticksWithSubCandlesticks({
                     instId: config.symbol,
                     bar: config.timeframe,
-                    limit: 200,
+                    limit: config.limit,
                     subCandlesticksTimeFrame: "1m",
                 });
 

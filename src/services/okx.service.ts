@@ -92,6 +92,7 @@ export class OKXService {
       onSubCandlestickProgress?: (amountOfFetched: number, totalAmount: number) => void;
       onSubCandlestickEnd?: (amountOfFetched: number) => void;
       onTradesGenerationStart?: (amountOfTrades: number) => void;
+      onTradesGenerationProgress?: (amountOfTrades: number, totalAmount: number) => void;
     },
   ): Promise<CandlestickWithSubCandlesticksAndRsi[]> {
     const mainCandlesticks: Candlestick[] = [];
@@ -174,6 +175,10 @@ export class OKXService {
         const trades = generateSyntheticTrades({ ...subCandlestick }, 60);
         return trades;
       });
+      callBacks.onTradesGenerationProgress?.(
+        generatedTradesWithSubCandlesticks.flat().length,
+        candlesticksWithSubCandlesticks.length * 15 * 60,
+      );
       return {
         ...candlestick,
         trades: generatedTradesWithSubCandlesticks.flat(),

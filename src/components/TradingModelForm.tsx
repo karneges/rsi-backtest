@@ -3,6 +3,7 @@ import { TradeConfig } from '../types';
 
 interface TradingModelFormProps {
     onSubmit: (config: TradeConfig) => void;
+    initialConfig?: Partial<TradeConfig>;
 }
 
 // Default configuration with current version
@@ -27,8 +28,14 @@ const DEFAULT_CONFIG: TradeConfig & { version: number } = {
 
 const STORAGE_KEY = 'trading_model_config';
 
-export const TradingModelForm: React.FC<TradingModelFormProps> = ({ onSubmit }) => {
+export const TradingModelForm: React.FC<TradingModelFormProps> = ({ onSubmit, initialConfig }) => {
     const [config, setConfig] = useState<TradeConfig>(() => {
+        // First try to use initialConfig from URL if available
+        if (initialConfig && Object.keys(initialConfig).length > 0) {
+            return { ...DEFAULT_CONFIG, ...initialConfig };
+        }
+
+        // Then try to use saved config from localStorage
         try {
             const savedConfig = localStorage.getItem(STORAGE_KEY);
             if (savedConfig) {
@@ -54,6 +61,13 @@ export const TradingModelForm: React.FC<TradingModelFormProps> = ({ onSubmit }) 
         }
         return DEFAULT_CONFIG;
     });
+
+    // Update config when initialConfig changes
+    useEffect(() => {
+        if (initialConfig && Object.keys(initialConfig).length > 0) {
+            setConfig(prev => ({ ...prev, ...initialConfig }));
+        }
+    }, [initialConfig]);
 
     // Save config to localStorage whenever it changes
     useEffect(() => {

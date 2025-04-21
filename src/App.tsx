@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TradingModelForm } from './components/TradingModelForm';
 import { TradeConfig, BacktestResult } from './types';
 import { RsiTradeBasedModel } from './models/rsiTradeBasedModel';
@@ -15,12 +15,58 @@ interface CacheEntry {
     timestamp: number;
 }
 
+// Helper function to get config from URL params
+const getConfigFromUrl = (): Partial<TradeConfig> => {
+    const params = new URLSearchParams(window.location.search);
+    const config: Partial<TradeConfig> = {};
+    
+    // Define parameter types for proper parsing
+    const numberParams = [
+        'leverage', 'longEntryRsi', 'longExitRsi', 'shortEntryRsi', 'shortExitRsi',
+        'breakEvenThreshold', 'minProfitPercent', 'fixedPositionSize', 'addPositionSize',
+        'maxLossEntries', 'positionAddDelay', 'limit', 'cacheTTL'
+    ];
+    
+    // Parse all parameters
+    params.forEach((value, key) => {
+        if (numberParams.includes(key)) {
+            // Special case for positionAddDelay which needs to be in milliseconds
+            if (key === 'positionAddDelay') {
+                config[key as keyof TradeConfig] = Number(value) * 1000 as any; // Convert seconds to milliseconds
+            } else {
+                config[key as keyof TradeConfig] = Number(value) as any;
+            }
+        } else {
+            config[key as keyof TradeConfig] = value as any;
+        }
+    });
+    
+    return config;
+};
+
+// Helper function to update URL with config
+const updateUrlWithConfig = (config: TradeConfig) => {
+    const params = new URLSearchParams();
+    
+    Object.entries(config).forEach(([key, value]) => {
+        // Convert positionAddDelay from milliseconds to seconds for URL
+        if (key === 'positionAddDelay') {
+            params.set(key, String(Number(value) / 1000));
+        } else {
+            params.set(key, String(value));
+        }
+    });
+    
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.pushState({}, '', newUrl);
+};
+
 const App: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<BacktestResult | null>(null);
     const [historicalData, setHistoricalData] = useState<CandlestickWithSubCandlesticksAndRsi[] | null>(null);
-    // Add cache for historical data with timestamps
+    const [initialConfig, setInitialConfig] = useState<Partial<TradeConfig> | undefined>(undefined);
     const [cachedData, setCachedData] = useState<{
         [key: string]: CacheEntry
     }>({});
@@ -32,10 +78,22 @@ const App: React.FC = () => {
     const [totalSubCandles, setTotalSubCandles] = useState(0);
     const [totalTrades, setTotalTrades] = useState(0);
 
+    // Load initial config from URL on mount
+    useEffect(() => {
+        const urlConfig = getConfigFromUrl();
+        if (Object.keys(urlConfig).length > 0) {
+            setInitialConfig(urlConfig);
+        }
+    }, []);
+
     const handleSubmit = async (config: TradeConfig) => {
+        // Update URL with new config
+        updateUrlWithConfig(config);
+        
         setIsLoading(true);
         setError(null);
         setResult(null);
+        setStage('idle');
 
         try {
             let data: CandlestickWithSubCandlesticksAndRsi[];
@@ -94,6 +152,9 @@ const App: React.FC = () => {
                     setTotalTrades(amountOfTrades);
                     setTradesProgress(0);
                 },
+                onTradesGenerationProgress: (amountOfTrades, totalAmount) => {
+                    setTradesProgress(amountOfTrades);
+                },
             }
                 );
 
@@ -133,7 +194,10 @@ const App: React.FC = () => {
             </header>
 
             <main className="app-main">
-                <TradingModelForm onSubmit={handleSubmit} />
+                <TradingModelForm 
+                    onSubmit={handleSubmit} 
+                    initialConfig={initialConfig}
+                />
 
                 {isLoading && (
                     <ProgressLoader

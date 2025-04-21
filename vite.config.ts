@@ -4,7 +4,7 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
-  base: "/rsi-model/",
+  base: "/rsi-backtest/",
   server: {
     port: 3000,
     open: true,

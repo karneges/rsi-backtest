@@ -1,0 +1,168 @@
+import React, { useState } from 'react';
+import { TradingModelForm } from './components/TradingModelForm';
+import { TradeConfig, BacktestResult } from './types';
+import { RsiTradeBasedModel } from './models/rsiTradeBasedModel';
+import { OKXService } from './services/okx.service';
+import { TradingViewChart } from './components/TradingViewChart';
+import { CandlestickWithSubCandlesticksAndRsi } from './types/okx.types';
+import { TradeTable } from './components/TradeTable';
+import './App.css';
+
+const App: React.FC = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [result, setResult] = useState<BacktestResult | null>(null);
+    const [historicalData, setHistoricalData] = useState<CandlestickWithSubCandlesticksAndRsi[] | null>(null);
+    // Add cache for historical data
+    const [cachedData, setCachedData] = useState<{
+        [key: string]: {
+            data: CandlestickWithSubCandlesticksAndRsi[];
+            timeframe: string;
+        }
+    }>({});
+
+    const handleSubmit = async (config: TradeConfig) => {
+        setIsLoading(true);
+        setError(null);
+        setResult(null);
+
+        try {
+            let data: CandlestickWithSubCandlesticksAndRsi[];
+            const cacheKey = config.symbol;
+
+            // Check if we have cached data for this symbol and timeframe
+            if (cachedData[cacheKey] && cachedData[cacheKey].timeframe === config.timeframe) {
+                console.log('Using cached data for', config.symbol);
+                data = cachedData[cacheKey].data;
+            } else {
+                // Fetch new data if not cached or timeframe changed
+                console.log('Fetching new data for', config.symbol);
+                const okxService = new OKXService();
+                data = await okxService.getCandlesticksWithSubCandlesticks({
+                    instId: config.symbol,
+                    bar: config.timeframe,
+                    limit: 200,
+                    subCandlesticksTimeFrame: "1m",
+                });
+
+                // Cache the new data
+                setCachedData(prev => ({
+                    ...prev,
+                    [cacheKey]: {
+                        data,
+                        timeframe: config.timeframe
+                    }
+                }));
+            }
+
+            // Initialize the trading model with the config and historical data
+            const model = new RsiTradeBasedModel(config, data);
+
+            // Run the backtest
+            const backtestResult = await model.runTradeBasedBacktest();
+
+            setResult(backtestResult);
+            setHistoricalData(data);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="app">
+            <header className="app-header">
+                <h1>RSI Trading Model</h1>
+                <p>Configure and run your RSI-based trading strategy</p>
+            </header>
+
+            <main className="app-main">
+                <TradingModelForm onSubmit={handleSubmit} />
+
+                {isLoading && (
+                    <div className="loading">
+                        <div className="spinner"></div>
+                        <p>Running backtest...</p>
+                    </div>
+                )}
+
+                {error && (
+                    <div className="error">
+                        <h3>Error</h3>
+                        <p>{error}</p>
+                    </div>
+                )}
+
+                {result && historicalData && (
+                    <div className="results">
+                        <h2>Backtest Results</h2>
+                        <div className="stats-grid">
+                            <div className="stat-card">
+                                <h3>Total Profit</h3>
+                                <p className={result.stats.totalProfit >= 0 ? 'profit' : 'loss'}>
+                                    {result.stats.totalProfit.toFixed(2)} USDT
+                                </p>
+                            </div>
+                            <div className="stat-card">
+                                <h3>Win Rate</h3>
+                                <p>{result.stats.winRate.toFixed(2)}%</p>
+                                <small>{result.stats.winningTrades} winning, {result.stats.losingTrades} losing</small>
+                            </div>
+                            <div className="stat-card">
+                                <h3>Max Drawdown</h3>
+                                <p className="loss">{result.stats.maxDrawdown.toFixed(2)}%</p>
+                            </div>
+                            <div className="stat-card">
+                                <h3>Sharpe Ratio</h3>
+                                <p>{result.stats.sharpeRatio.toFixed(2)}</p>
+                            </div>
+                        </div>
+
+                        <div className="chart-container">
+                            <TradingViewChart result={result} historicalData={historicalData} />
+                        </div>
+                        <TradeTable result={result} />
+
+                        <div className="recent-trades">
+                            <h3>Recent Trades</h3>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Entry Time</th>
+                                        <th>Exit Time</th>
+                                        <th>Entry Price</th>
+                                        <th>Exit Price</th>
+                                        <th>Profit/Loss</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {result.trades.slice(-10).map((trade, index) => (
+                                        <tr key={index}>
+                                            <td>{trade.type}</td>
+                                            <td>{new Date(trade.openTimestamp).toLocaleString()}</td>
+                                            <td>
+                                                {trade.closeTimestamp 
+                                                    ? new Date(trade.closeTimestamp).toLocaleString() 
+                                                    : 'Open'}
+                                            </td>
+                                            <td>{trade.averageEntryPrice.toFixed(2)}</td>
+                                            <td>{trade.closePrice?.toFixed(2) || '-'}</td>
+                                            <td className={trade.profit && trade.profit >= 0 ? 'profit' : 'loss'}>
+                                                {trade.profit?.toFixed(2) || '-'} USDT
+                                                ({trade.profitPercent?.toFixed(2) || '-'}%)
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+            </main>
+        </div>
+    );
+};
+
+export default App; 

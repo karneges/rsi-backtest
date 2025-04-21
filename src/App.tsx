@@ -8,17 +8,20 @@ import { CandlestickWithSubCandlesticksAndRsi } from './types/okx.types';
 import { TradeTable } from './components/TradeTable';
 import './App.css';
 
+interface CacheEntry {
+    data: CandlestickWithSubCandlesticksAndRsi[];
+    timeframe: string;
+    timestamp: number;
+}
+
 const App: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<BacktestResult | null>(null);
     const [historicalData, setHistoricalData] = useState<CandlestickWithSubCandlesticksAndRsi[] | null>(null);
-    // Add cache for historical data
+    // Add cache for historical data with timestamps
     const [cachedData, setCachedData] = useState<{
-        [key: string]: {
-            data: CandlestickWithSubCandlesticksAndRsi[];
-            timeframe: string;
-        }
+        [key: string]: CacheEntry
     }>({});
 
     const handleSubmit = async (config: TradeConfig) => {
@@ -29,14 +32,24 @@ const App: React.FC = () => {
         try {
             let data: CandlestickWithSubCandlesticksAndRsi[];
             const cacheKey = config.symbol;
+            const now = Date.now();
 
-            // Check if we have cached data for this symbol and timeframe
-            if (cachedData[cacheKey] && cachedData[cacheKey].timeframe === config.timeframe) {
+            // Check if we have valid cached data
+            const isCacheValid = cachedData[cacheKey] && 
+                               cachedData[cacheKey].timeframe === config.timeframe &&
+                               config.cacheTTL > 0 && // Only use cache if TTL > 0
+                               (now - cachedData[cacheKey].timestamp) < (config.cacheTTL * 60 * 1000); // Convert minutes to milliseconds
+
+            if (isCacheValid) {
                 console.log('Using cached data for', config.symbol);
                 data = cachedData[cacheKey].data;
             } else {
-                // Fetch new data if not cached or timeframe changed
-                console.log('Fetching new data for', config.symbol);
+                // Fetch new data if not cached, cache expired, or timeframe changed
+                console.log('Fetching new data for', config.symbol, 
+                    isCacheValid ? '' : 
+                    config.cacheTTL === 0 ? '(caching disabled)' : 
+                    cachedData[cacheKey] ? '(cache expired)' : '(not in cache)');
+                
                 const okxService = new OKXService();
                 data = await okxService.getCandlesticksWithSubCandlesticks({
                     instId: config.symbol,
@@ -45,14 +58,17 @@ const App: React.FC = () => {
                     subCandlesticksTimeFrame: "1m",
                 });
 
-                // Cache the new data
-                setCachedData(prev => ({
-                    ...prev,
-                    [cacheKey]: {
-                        data,
-                        timeframe: config.timeframe
-                    }
-                }));
+                // Cache the new data if caching is enabled
+                if (config.cacheTTL > 0) {
+                    setCachedData(prev => ({
+                        ...prev,
+                        [cacheKey]: {
+                            data,
+                            timeframe: config.timeframe,
+                            timestamp: now
+                        }
+                    }));
+                }
             }
 
             // Initialize the trading model with the config and historical data

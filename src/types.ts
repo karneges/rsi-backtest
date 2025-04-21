@@ -13,6 +13,7 @@ export interface TradeConfig {
   symbol: string;
   timeframe: string;
   limit: number; // Number of candlesticks to fetch
+  cacheTTL: number; // Time to live for candlesticks cache in minutes (0 = no cache)
 }
 
 export type TradeType = "LONG" | "SHORT";

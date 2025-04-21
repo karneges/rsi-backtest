@@ -1,27 +1,68 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TradeConfig } from '../types';
 
 interface TradingModelFormProps {
     onSubmit: (config: TradeConfig) => void;
 }
 
+// Default configuration with current version
+const DEFAULT_CONFIG: TradeConfig & { version: number } = {
+    version: 1, // Increment this when making breaking changes to the config structure
+    symbol: 'BTC-USDT',
+    timeframe: '15m',
+    longEntryRsi: 30,
+    longExitRsi: 55,
+    shortEntryRsi: 70,
+    shortExitRsi: 45,
+    leverage: 10,
+    fixedPositionSize: 1,
+    addPositionSize: 0.5,
+    breakEvenThreshold: 1,
+    minProfitPercent: 1,
+    maxLossEntries: 3,
+    positionAddDelay: 60000,
+    limit: 200,
+    cacheTTL: 5,
+};
+
+const STORAGE_KEY = 'trading_model_config';
+
 export const TradingModelForm: React.FC<TradingModelFormProps> = ({ onSubmit }) => {
-    const [config, setConfig] = useState<TradeConfig>({
-        symbol: 'BTC-USDT',
-        timeframe: '15m',
-        longEntryRsi: 30,
-        longExitRsi: 55,
-        shortEntryRsi: 70,
-        shortExitRsi: 45,
-        leverage: 10,
-        fixedPositionSize: 1,
-        addPositionSize: 0.5, // Default to half of the initial position size
-        breakEvenThreshold: 1,
-        minProfitPercent: 1,
-        maxLossEntries: 3,
-        positionAddDelay: 60000, // 60 seconds in milliseconds
-        limit: 200, // Default value for number of candlesticks
+    const [config, setConfig] = useState<TradeConfig>(() => {
+        try {
+            const savedConfig = localStorage.getItem(STORAGE_KEY);
+            if (savedConfig) {
+                const parsed = JSON.parse(savedConfig);
+                
+                // Check if saved config is compatible with current version
+                if (!parsed.version || parsed.version < DEFAULT_CONFIG.version) {
+                    console.log('Outdated config version, using defaults with saved values where possible');
+                    // Merge saved values with default config where keys match
+                    const mergedConfig = { ...DEFAULT_CONFIG };
+                    Object.keys(parsed).forEach(key => {
+                        if (key in DEFAULT_CONFIG && key !== 'version') {
+                            (mergedConfig as any)[key] = parsed[key];
+                        }
+                    });
+                    return mergedConfig;
+                }
+                
+                return parsed;
+            }
+        } catch (error) {
+            console.error('Error loading saved config:', error);
+        }
+        return DEFAULT_CONFIG;
     });
+
+    // Save config to localStorage whenever it changes
+    useEffect(() => {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...config, version: DEFAULT_CONFIG.version }));
+        } catch (error) {
+            console.error('Error saving config:', error);
+        }
+    }, [config]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -33,9 +74,16 @@ export const TradingModelForm: React.FC<TradingModelFormProps> = ({ onSubmit }) 
         setConfig(prev => ({
             ...prev,
             [name]: name.includes('Rsi') || name.includes('leverage') || name.includes('Size') || 
-                    name.includes('Threshold') || name.includes('Percent') || name.includes('Entries') ? 
+                    name.includes('Threshold') || name.includes('Percent') || name.includes('Entries') ||
+                    name === 'limit' || name === 'cacheTTL' ? 
                     Number(value) : value
         }));
+    };
+
+    const handleReset = () => {
+        if (window.confirm('Are you sure you want to reset all settings to default values?')) {
+            setConfig(DEFAULT_CONFIG);
+        }
     };
 
     return (
@@ -79,6 +127,22 @@ export const TradingModelForm: React.FC<TradingModelFormProps> = ({ onSubmit }) 
                         max="1000"
                         step="50"
                     />
+                </div>
+
+                <div className="form-group">
+                    <label htmlFor="cacheTTL">Cache Duration (minutes)</label>
+                    <input
+                        type="number"
+                        id="cacheTTL"
+                        name="cacheTTL"
+                        value={config.cacheTTL}
+                        onChange={handleChange}
+                        min="0"
+                        max="60"
+                        step="1"
+                        title="Time to live for candlesticks cache in minutes (0 = no cache)"
+                    />
+                    <small className="input-help">Set to 0 to disable caching</small>
                 </div>
             </div>
 
@@ -232,7 +296,10 @@ export const TradingModelForm: React.FC<TradingModelFormProps> = ({ onSubmit }) 
                 </div>
             </div>
 
-            <button type="submit" className="submit-button">Start Trading Model</button>
+            <div className="form-actions">
+                <button type="submit" className="submit-button">Start Trading Model</button>
+                <button type="button" onClick={handleReset} className="reset-button">Reset to Defaults</button>
+            </div>
         </form>
     );
 }; 

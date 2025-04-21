@@ -20,5 +20,11 @@ export default defineConfig({
     },
     outDir: "dist",
     sourcemap: true,
+    assetsDir: "assets",
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
   },
 });

@@ -111,7 +111,8 @@
 .trade-entries td:nth-child(3),
 .trade-entries td:nth-child(4),
 .trade-entries td:nth-child(5),
-.trade-entries td:nth-child(6) {
+.trade-entries td:nth-child(6),
+.trade-entries td:nth-child(7) {
   text-align: right;
   font-family: monospace;
 }

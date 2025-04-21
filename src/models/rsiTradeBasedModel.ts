@@ -289,7 +289,7 @@ export class RsiTradeBasedModel {
 
     this.currentPosition = {
       type,
-      entries: [{ price, size, timestamp, entryRsi: rsi }],
+      entries: [{ price, size, timestamp, entryRsi: rsi, pnl: 0 }],
       averageEntryPrice: price,
       currentSize: size,
       openTimestamp: timestamp,
@@ -308,12 +308,12 @@ export class RsiTradeBasedModel {
    */
   private averagePosition(price: number, capital: number, timestamp: number, rsi: number): void {
     if (!this.currentPosition) return;
+    let profit = 0;
 
     // Check if we should limit averaging down for losing positions
     if (this.config.maxLossEntries > 0) {
       // Calculate current profit
       const { type, averageEntryPrice, currentSize } = this.currentPosition;
-      let profit = 0;
 
       if (type === "LONG") {
         profit = (currentSize * (price - averageEntryPrice)) / averageEntryPrice;
@@ -338,6 +338,7 @@ export class RsiTradeBasedModel {
       size: additionalSize,
       timestamp,
       entryRsi: rsi,
+      pnl: profit,
     });
 
     // Update last entry timestamp for delay tracking

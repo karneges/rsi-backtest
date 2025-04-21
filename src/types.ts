@@ -20,7 +20,7 @@ export type TradeType = "LONG" | "SHORT";
 
 export interface TradePosition {
   type: TradeType;
-  entries: { price: number; size: number; timestamp: number; entryRsi?: number }[];
+  entries: { price: number; size: number; timestamp: number; entryRsi?: number; pnl: number }[];
   averageEntryPrice: number;
   currentSize: number;
   openTimestamp: number;

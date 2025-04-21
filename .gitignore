@@ -31,11 +31,8 @@ dist-ssr
 .env.test.local
 .env.production.local
 
-/dist/
+/dist/ 
 /.idea/
 /workFiles/
 src/sources/config.json
 
-# TradingView Charting Library
-src/charting-library/
-public/charting-library/

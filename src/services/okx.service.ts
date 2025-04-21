@@ -84,9 +84,18 @@ export class OKXService {
 
   async getCandlesticksWithSubCandlesticks(
     params: GetCandlesticksParams & { subCandlesticksTimeFrame: string },
+    callBacks: {
+      onMainCandlestickStart?: (amountOfFetched: number) => void;
+      onMainCandlestickProgress?: (amountOfFetched: number, totalAmount: number) => void;
+      onMainCandlestickEnd?: (amountOfFetched: number) => void;
+      onSubCandlestickStart?: (amountOfFetched: number) => void;
+      onSubCandlestickProgress?: (amountOfFetched: number, totalAmount: number) => void;
+      onSubCandlestickEnd?: (amountOfFetched: number) => void;
+      onTradesGenerationStart?: (amountOfTrades: number) => void;
+    },
   ): Promise<CandlestickWithSubCandlesticksAndRsi[]> {
     const mainCandlesticks: Candlestick[] = [];
-
+    callBacks.onMainCandlestickStart?.(params.limit);
     if (params.limit > 100) {
       let initialAfter = Date.now();
       for (let i = 0; i < params.limit; i += 100) {
@@ -98,10 +107,12 @@ export class OKXService {
         });
         mainCandlesticks.push(...response);
         initialAfter = response[response.length - 1]?.timestamp!;
+        callBacks.onMainCandlestickProgress?.(mainCandlesticks.length, params.limit);
       }
     } else {
       mainCandlesticks.push(...(await this.getCandlesticks(params)));
     }
+    callBacks.onMainCandlestickEnd?.(mainCandlesticks.length);
     const lastCandlestick = mainCandlesticks[mainCandlesticks.length - 1];
     const lastCandlestickTimestamp = lastCandlestick?.timestamp;
 
@@ -109,6 +120,7 @@ export class OKXService {
     let subCandlesticks: Candlestick[] = [];
     mainCandlesticks.reverse();
     console.log(initialAfter);
+    callBacks.onSubCandlestickStart?.(params.limit * 15);
     while (true) {
       if (!initialAfter) {
         break;
@@ -119,17 +131,20 @@ export class OKXService {
         after: initialAfter.toString(),
         limit: 100,
       });
+
       if (response.length < 100) {
         debugger;
       }
       let lastCandlestick = response[response.length - 1];
       subCandlesticks.push(...response);
+      callBacks.onSubCandlestickProgress?.(subCandlesticks.length, params.limit * 15);
       if (lastCandlestick?.timestamp! < lastCandlestickTimestamp!) {
         break;
       }
       initialAfter = lastCandlestick?.timestamp!;
       console.log(initialAfter);
     }
+    callBacks.onSubCandlestickEnd?.(subCandlesticks.length);
 
     const mappedCandlesticks = mainCandlesticks.reduce((acc, next, i, arr) => {
       const currentCandleTimestamp = next.timestamp;
@@ -153,6 +168,7 @@ export class OKXService {
       }),
     );
 
+    callBacks.onTradesGenerationStart?.(candlesticksWithSubCandlesticks.length * 15 * 60);
     const generatedTrades = candlesticksWithSubCandlesticks.map((candlestick) => {
       const generatedTradesWithSubCandlesticks = candlestick.subCandlesticks.map((subCandlestick) => {
         const trades = generateSyntheticTrades({ ...subCandlestick }, 60);

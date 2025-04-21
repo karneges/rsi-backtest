@@ -7,6 +7,7 @@ import { TradingViewChart } from './components/TradingViewChart';
 import { CandlestickWithSubCandlesticksAndRsi } from './types/okx.types';
 import { TradeTable } from './components/TradeTable';
 import './App.css';
+import { ProgressLoader } from './components/ProgressLoader';
 
 interface CacheEntry {
     data: CandlestickWithSubCandlesticksAndRsi[];
@@ -23,6 +24,13 @@ const App: React.FC = () => {
     const [cachedData, setCachedData] = useState<{
         [key: string]: CacheEntry
     }>({});
+    const [mainCandlesProgress, setMainCandlesProgress] = useState(0);
+    const [subCandlesProgress, setSubCandlesProgress] = useState(0);
+    const [tradesProgress, setTradesProgress] = useState(0);
+    const [stage, setStage] = useState<'idle' | 'main-candles' | 'sub-candles' | 'trades' | 'complete'>('idle');
+    const [totalMainCandles, setTotalMainCandles] = useState(0);
+    const [totalSubCandles, setTotalSubCandles] = useState(0);
+    const [totalTrades, setTotalTrades] = useState(0);
 
     const handleSubmit = async (config: TradeConfig) => {
         setIsLoading(true);
@@ -56,7 +64,38 @@ const App: React.FC = () => {
                     bar: config.timeframe,
                     limit: config.limit,
                     subCandlesticksTimeFrame: "1m",
-                });
+                    
+                },  { 
+                onMainCandlestickStart: (amountOfFetched) => {
+                    setStage('main-candles');
+                    setTotalMainCandles(amountOfFetched);
+                    setMainCandlesProgress(0);
+                },
+
+                onMainCandlestickProgress: (amountOfFetched, totalAmount) => {
+                    setMainCandlesProgress(amountOfFetched);
+                },
+                onMainCandlestickEnd: (amountOfFetched) => {
+                    setMainCandlesProgress(amountOfFetched);
+                },
+                onSubCandlestickStart: (amountOfFetched) => {
+                    setStage('sub-candles');
+                    setTotalSubCandles(amountOfFetched);
+                    setSubCandlesProgress(0);
+                },
+                onSubCandlestickEnd: (amountOfFetched) => {
+                    setSubCandlesProgress(amountOfFetched);
+                },
+                onSubCandlestickProgress: (amountOfFetched, totalAmount) => {
+                    setSubCandlesProgress(amountOfFetched);
+                },
+                onTradesGenerationStart: (amountOfTrades) => {
+                    setStage('trades');
+                    setTotalTrades(amountOfTrades);
+                    setTradesProgress(0);
+                },
+            }
+                );
 
                 // Cache the new data if caching is enabled
                 if (config.cacheTTL > 0) {
@@ -97,10 +136,15 @@ const App: React.FC = () => {
                 <TradingModelForm onSubmit={handleSubmit} />
 
                 {isLoading && (
-                    <div className="loading">
-                        <div className="spinner"></div>
-                        <p>Running backtest...</p>
-                    </div>
+                    <ProgressLoader
+                        mainCandlesProgress={mainCandlesProgress}
+                        subCandlesProgress={subCandlesProgress}
+                        tradesProgress={tradesProgress}
+                        stage={stage}
+                        totalMainCandles={totalMainCandles}
+                        totalSubCandles={totalSubCandles}
+                        totalTrades={totalTrades}
+                    />
                 )}
 
                 {error && (

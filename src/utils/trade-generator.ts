@@ -127,7 +127,7 @@ export function generateSyntheticTrades(
     const tradeVolume = Math.max(0, avgVolumePerTrade + (Math.random() - 0.5) * volumeVariation);
 
     trades.push({
-      price: Number(currentPrice.toFixed(4)), // Round to 4 decimal places
+      price: Number(currentPrice.toFixed(6)), // Round to 4 decimal places
       timestamp: Math.floor(timestamps[i]),
     });
   }

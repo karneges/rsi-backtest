@@ -18,6 +18,8 @@ export interface TradeConfig {
 
 export type TradeType = "LONG" | "SHORT";
 
+export type TradeStatus = "OPEN" | "CLOSED" | "NOT_COMPLETED";
+
 export interface TradePosition {
   type: TradeType;
   entries: { price: number; size: number; timestamp: number; entryRsi?: number; pnl: number }[];
@@ -31,6 +33,7 @@ export interface TradePosition {
   closeRsi?: number; // RSI value at position close
   profit?: number;
   profitPercent?: number;
+  status: TradeStatus; // New field to track trade status
 }
 
 export interface HistoricalData {

@@ -175,7 +175,7 @@ const App: React.FC = () => {
             const model = new RsiTradeBasedModel(config, data);
 
             // Run the backtest
-            const backtestResult = await model.runTradeBasedBacktest();
+            const backtestResult = await model.runTradeBasedBacktest()
 
             setResult(backtestResult);
             setHistoricalData(data);
@@ -262,7 +262,7 @@ const App: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {result.trades.slice(-10).map((trade, index) => (
+                                    {result.trades.map((trade, index) => (
                                         <tr key={index}>
                                             <td>{trade.type}</td>
                                             <td>{new Date(trade.openTimestamp).toLocaleString()}</td>

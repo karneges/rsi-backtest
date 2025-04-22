@@ -67,8 +67,8 @@ export const TradeTable: React.FC<TradeTableProps> = ({ result }) => {
           <div key={index} className={`trade-card ${trade.type.toLowerCase()}`}>
             <div className="trade-header">
               <span className="trade-type">{trade.type}</span>
-              <span className="trade-status">
-                {trade.closeTimestamp ? 'CLOSED' : 'OPEN'}
+              <span className={`trade-status ${trade.status.toLowerCase()}`}>
+                {trade.status}
               </span>
             </div>
             
@@ -96,15 +96,22 @@ export const TradeTable: React.FC<TradeTableProps> = ({ result }) => {
                     <label>Total Size:</label>
                     <span>{trade.entries.reduce((sum, entry) => sum + entry.size, 0)}</span>
                   </div>
-                  {trade.closeTimestamp ? (
+                  {trade.status === 'CLOSED' ? (
                     <div className="summary-item">
                       <label>Status:</label>
-                      <span className={trade.profit! >= 0 ? 'profit' : 'loss'}>CLOSED ({trade.profitPercent!.toFixed(2)}%)</span>
+                      <span className={trade.profit! >= 0 ? 'profit' : 'loss'}>
+                        CLOSED ({trade.profitPercent!.toFixed(2)}%)
+                      </span>
+                    </div>
+                  ) : trade.status === 'NOT_COMPLETED' ? (
+                    <div className="summary-item">
+                      <label>Status:</label>
+                      <span className="not-completed">NOT COMPLETED</span>
                     </div>
                   ) : (
                     <div className="summary-item">
-                      <label>Unrealized P/L:</label>
-                      <span>-</span>
+                      <label>Status:</label>
+                      <span className="open">OPEN</span>
                     </div>
                   )}
                 </div>

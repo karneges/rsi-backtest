@@ -111,12 +111,26 @@ export class RsiTradeBasedModel {
     // Close any open position at the end of the test
     if (this.currentPosition) {
       const lastPrice = this.lastProcessedPrice;
-      this.closePosition(
-        lastPrice,
-        this.candlesWithTrades[this.candlesWithTrades.length - 1].timestamp,
-        this.candlesWithTrades[this.candlesWithTrades.length - 1].rsi!,
-      );
+      const lastCandle = this.candlesWithTrades[this.candlesWithTrades.length - 1];
+
+      // Check if we have remaining trades or if this is the end of data
+      if (lastCandle.trades.length === 0) {
+        // No more trades available, mark as NOT_COMPLETED
+        this.currentPosition.status = "NOT_COMPLETED";
+        this.positionTrades.push({ ...this.currentPosition });
+        this.currentPosition = null;
+      } else {
+        // Close the position normally if we have trades
+        this.closePosition(lastPrice, lastCandle.timestamp, lastCandle.rsi!);
+      }
     }
+    this.positionTrades = this.positionTrades.filter((t) => {
+      if (!t.closeTimestamp) {
+        return true;
+      }
+      const timeDiff = t.closeTimestamp - t.openTimestamp;
+      return timeDiff > 1000 * 60 * 15;
+    });
 
     // Calculate statistics
     const stats = this.calculateStats();
@@ -295,6 +309,7 @@ export class RsiTradeBasedModel {
       openTimestamp: timestamp,
       lastEntryTimestamp: timestamp,
       openRsi: rsi,
+      status: "OPEN",
     };
 
     // Update current capital (divide capital by leverage to get required margin)
@@ -381,11 +396,7 @@ export class RsiTradeBasedModel {
 
     // Double-check that we're closing with a profit
     if (profitPercent < minProfitPercent) {
-      console.log(
-        `Prevented closing ${type} position at ${price} with insufficient profit: ${profitPercent.toFixed(
-          2,
-        )}% < ${minProfitPercent}% minimum`,
-      );
+      console.log(`Not closing ${type} position - profit ${profitPercent.toFixed(2)}% < ${minProfitPercent}% minimum`);
 
       // If we have an exit signal but insufficient profit, add to position instead (if we have capital)
       const fixedPositionSize = this.config.fixedPositionSize ?? 10;
@@ -409,12 +420,13 @@ export class RsiTradeBasedModel {
       return; // Don't close the position
     }
 
-    // Update the trade with closing details
+    // Update the trade with closing data
     this.currentPosition.closeTimestamp = timestamp;
     this.currentPosition.closePrice = price;
     this.currentPosition.closeRsi = rsi;
     this.currentPosition.profit = profit;
     this.currentPosition.profitPercent = profitPercent;
+    this.currentPosition.status = "CLOSED";
 
     // Add to completed trades
     this.positionTrades.push({ ...this.currentPosition });

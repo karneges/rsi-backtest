@@ -173,6 +173,7 @@ export class OKXService {
     const generatedTrades = candlesticksWithSubCandlesticks.map((candlestick) => {
       const generatedTradesWithSubCandlesticks = candlestick.subCandlesticks.map((subCandlestick) => {
         const trades = generateSyntheticTrades({ ...subCandlestick }, 60);
+        debugger;
         return trades;
       });
       callBacks.onTradesGenerationProgress?.(

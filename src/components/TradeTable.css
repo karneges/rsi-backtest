@@ -78,8 +78,25 @@
 }
 
 .trade-status {
+  padding: 4px 8px;
+  border-radius: 4px;
   font-size: 0.9em;
-  color: #666;
+  font-weight: 600;
+}
+
+.trade-status.open {
+  background-color: #2196f3;
+  color: white;
+}
+
+.trade-status.closed {
+  background-color: #4caf50;
+  color: white;
+}
+
+.trade-status.not_completed {
+  background-color: #ff9800;
+  color: white;
 }
 
 .trade-entries {
@@ -193,4 +210,24 @@ h4 {
   font-family: monospace;
   font-size: 1.1em;
   text-align: right;
+}
+
+.summary-item span.profit {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+.summary-item span.loss {
+  color: #f44336;
+  font-weight: 600;
+}
+
+.summary-item span.not-completed {
+  color: #ff9800;
+  font-weight: 600;
+}
+
+.summary-item span.open {
+  color: #2196f3;
+  font-weight: 600;
 } 

@@ -139,7 +139,7 @@ export const TradingModelForm: React.FC<TradingModelFormProps> = ({ onSubmit, in
                             value={config.limit}
                             onChange={handleChange}
                             min="50"
-                            max="1000"
+                            max="10000"
                             step="50"
                         />
                     </div>

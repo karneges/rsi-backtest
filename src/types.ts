@@ -14,6 +14,7 @@ export interface TradeConfig {
   timeframe: string;
   limit: number; // Number of candlesticks to fetch
   cacheTTL: number; // Time to live for candlesticks cache in minutes (0 = no cache)
+  closeStrategy: "rsi" | "profit";
 }
 
 export type TradeType = "LONG" | "SHORT";

@@ -24,6 +24,7 @@ const DEFAULT_CONFIG: TradeConfig & { version: number } = {
     positionAddDelay: 60000,
     limit: 200,
     cacheTTL: 5,
+    closeStrategy: "rsi", // Add default close strategy
 };
 
 const STORAGE_KEY = 'trading_model_config';
@@ -233,6 +234,19 @@ export const TradingModelForm: React.FC<TradingModelFormProps> = ({ onSubmit, in
                             min="1"
                             max="100"
                         />
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="closeStrategy">Close Strategy</label>
+                        <select
+                            id="closeStrategy"
+                            name="closeStrategy"
+                            value={config.closeStrategy}
+                            onChange={handleChange}
+                        >
+                            <option value="rsi">RSI + Profit</option>
+                            <option value="profit">Profit</option>
+                        </select>
                     </div>
 
                     <div className="form-group">

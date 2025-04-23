@@ -27,7 +27,7 @@ export class RsiTradeBasedModel {
     this.config = config;
     this.initialCapital = initialCapital;
     this.currentCapital = initialCapital;
-
+    debugger;
     // Convert candles to the candlesWithTrades format
     this.candlesWithTrades = candles;
   }
@@ -173,7 +173,9 @@ export class RsiTradeBasedModel {
     const rsiExitSignal =
       (type === "LONG" && rsi >= this.config.longExitRsi) || (type === "SHORT" && rsi <= this.config.shortExitRsi);
 
-    if (rsiExitSignal) {
+    const isReadyToClose = this.config.closeStrategy === "rsi" ? rsiExitSignal : profitPercent >= minProfitPercent;
+
+    if (isReadyToClose) {
       // Only close if profit is at least the minimum required
       if (profitPercent >= minProfitPercent) {
         console.log(

@@ -248,6 +248,17 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({ result, hist
           }
         );
 
+        // Add ATR indicator
+        tvWidget.chart().createStudy(
+          'Average True Range',
+          false,
+          false,
+          {
+            length: 14, // Default period is 14
+            color: '#2196F3'
+          }
+        );
+
         // Add trade markers if available
         if (result.trades && result.trades.length > 0) {
           const chart = tvWidget.chart();

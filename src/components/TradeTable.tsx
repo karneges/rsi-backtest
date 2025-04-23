@@ -127,6 +127,8 @@ export const TradeTable: React.FC<TradeTableProps> = ({ result }) => {
                     <th>Position Size</th>
                     <th>Break-even</th>
                     <th>Gap from BE</th>
+                    <th>RSI</th>
+                    <th>ATR</th>
                     <th>PnL</th>
                   </tr>
                 </thead>
@@ -156,6 +158,8 @@ export const TradeTable: React.FC<TradeTableProps> = ({ result }) => {
                         <td className={isPositiveGap ? 'profit' : 'loss'}>
                           {priceGap.toFixed(2)}%
                         </td>
+                        <td>{entry.entryRsi.toFixed(2)}</td>
+                        <td>{entry.entryAtr}</td>
                         <td className={entry.pnl >= 0 ? 'profit' : 'loss'}>
                           {formatProfit(entry.pnl)} USDT
                         </td>

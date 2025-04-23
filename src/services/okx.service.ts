@@ -134,7 +134,6 @@ export class OKXService {
       });
 
       if (response.length < 100) {
-        debugger;
       }
       let lastCandlestick = response[response.length - 1];
       subCandlesticks.push(...response);
@@ -173,7 +172,6 @@ export class OKXService {
     const generatedTrades = candlesticksWithSubCandlesticks.map((candlestick) => {
       const generatedTradesWithSubCandlesticks = candlestick.subCandlesticks.map((subCandlestick) => {
         const trades = generateSyntheticTrades({ ...subCandlestick }, 60);
-        debugger;
         return trades;
       });
       callBacks.onTradesGenerationProgress?.(
@@ -189,8 +187,12 @@ export class OKXService {
     generatedTrades.forEach((candle, index) => {
       //@ts-ignore
       candle.rsi = rsiResult[index].candleRsi;
+      //@ts-ignore
+      candle.atr = rsiResult[index].candleAtr;
       candle.trades.forEach((trade, tradeIndex) => {
-        trade.rsi = rsiResult[index].trades[tradeIndex];
+        debugger;
+        trade.rsi = rsiResult[index].trades[tradeIndex]?.rsi || 50;
+        trade.atr = rsiResult[index].trades[tradeIndex]?.atr || 0;
       });
     });
     //@ts-ignore

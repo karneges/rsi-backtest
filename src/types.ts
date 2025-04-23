@@ -23,7 +23,7 @@ export type TradeStatus = "OPEN" | "CLOSED" | "NOT_COMPLETED";
 
 export interface TradePosition {
   type: TradeType;
-  entries: { price: number; size: number; timestamp: number; entryRsi?: number; pnl: number }[];
+  entries: { price: number; size: number; timestamp: number; entryRsi: number; pnl: number; entryAtr: number }[];
   averageEntryPrice: number;
   currentSize: number;
   openTimestamp: number;

@@ -180,6 +180,7 @@ const App: React.FC = () => {
             setResult(backtestResult);
             setHistoricalData(data);
         } catch (err) {
+            console.error(err);
             setError(err instanceof Error ? err.message : 'An unexpected error occurred');
         } finally {
             setIsLoading(false);

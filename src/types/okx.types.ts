@@ -62,6 +62,7 @@ export interface CandlestickWithSubCandlesticksAndRsi extends Candlestick {
   trades: Trade[];
 
   rsi: number;
+  atr: number;
 }
 
 // Raw candlestick data as returned by OKX API

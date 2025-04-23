@@ -4,6 +4,7 @@ export interface Trade {
   price: number;
   timestamp: number;
   rsi?: number; // Added RSI value for each trade
+  atr?: number; // Added ATR value for each trade
 }
 
 interface MarketState {
@@ -16,6 +17,7 @@ interface MarketState {
 
 interface CandlestickWithRSI extends Candlestick {
   rsi: number; // RSI value for the candlestick
+  atr: number; // ATR value for the candlestick
 }
 
 export function generateSyntheticTrades(

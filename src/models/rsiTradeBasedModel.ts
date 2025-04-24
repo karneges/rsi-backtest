@@ -15,10 +15,10 @@ export class RsiTradeBasedModel {
   private lastProcessedPrice: number = 0;
 
   constructor(config: TradeConfig, candles: CandlestickWithSubCandlesticksAndRsi[], initialCapital: number = 10000) {
+    debugger;
     this.config = config;
     this.initialCapital = initialCapital;
     this.currentCapital = initialCapital;
-    debugger;
     // Convert candles to the candlesWithTrades format
     this.candlesWithTrades = candles;
   }
@@ -27,11 +27,6 @@ export class RsiTradeBasedModel {
    * Run backtest using trade data for more accurate price movement simulation
    */
   async runTradeBasedBacktest(): Promise<BacktestResult> {
-    // Check if we have trades to work with
-
-    // Check if we have a reasonable distribution of trades
-    const candlesWithTradesCount = this.candlesWithTrades.filter((c) => c.trades.length > 0).length;
-
     // Initialize metrics
     let maxDrawdown = 0;
     let currentDrawdown = 0;
@@ -44,12 +39,6 @@ export class RsiTradeBasedModel {
     const startTime = this.candlesWithTrades[0].timestamp;
     const endTime = this.candlesWithTrades[this.candlesWithTrades.length - 1].timestamp;
 
-    // // Save initial equity point
-    // this.equityCurve.push({
-    //   timestamp: this.candles[rsiPeriod].timestamp,
-    //   equity: this.initialCapital,
-    // });
-
     // Process each candle
     for (let i = rsiPeriod; i < this.candlesWithTrades.length; i++) {
       const candle = this.candlesWithTrades[i];
@@ -61,8 +50,8 @@ export class RsiTradeBasedModel {
 
         for (const trade of sortedTrades) {
           // Process the trade by checking positions
-          this.checkClosePositions(trade.price, trade.rsi!, trade.timestamp, trade.atr!);
-          this.checkOpenPositions(trade.price, trade.rsi!, trade.timestamp, trade.atr!);
+          this.checkClosePositions(trade.price, trade.rsi!, trade.timestamp, trade.atr!, trade.avgAtr!);
+          this.checkOpenPositions(trade.price, trade.rsi!, trade.timestamp, trade.atr!, trade.avgAtr!);
 
           // Update equity curve after processing each trade
           this.updateEquityCurve(trade.price, trade.timestamp);
@@ -80,8 +69,8 @@ export class RsiTradeBasedModel {
         }
       } else {
         // For candles without trades, use the candle's closing price
-        this.checkClosePositions(candle.closePrice, candle.rsi!, candle.timestamp, candle.atr!);
-        this.checkOpenPositions(candle.closePrice, candle.rsi!, candle.timestamp, candle.atr!);
+        this.checkClosePositions(candle.closePrice, candle.rsi!, candle.timestamp, candle.atr!, candle.avgAtr!);
+        this.checkOpenPositions(candle.closePrice, candle.rsi!, candle.timestamp, candle.atr!, candle.avgAtr!);
 
         // Update equity curve
         this.updateEquityCurve(candle.closePrice, candle.timestamp);
@@ -112,7 +101,7 @@ export class RsiTradeBasedModel {
         this.currentPosition = null;
       } else {
         // Close the position normally if we have trades
-        this.closePosition(lastPrice, lastCandle.timestamp, lastCandle.rsi!, lastCandle.atr!);
+        this.closePosition(lastPrice, lastCandle.timestamp, lastCandle.rsi!, lastCandle.atr!, lastCandle.avgAtr!);
       }
     }
     this.positionTrades = this.positionTrades.filter((t) => {
@@ -139,7 +128,7 @@ export class RsiTradeBasedModel {
   /**
    * Check if we should close current position based on RSI and minimum profit
    */
-  private checkClosePositions(price: number, rsi: number, timestamp: number, atr: number): void {
+  private checkClosePositions(price: number, rsi: number, timestamp: number, atr: number, avgAtr: number): void {
     if (!this.currentPosition) return;
 
     const { type, averageEntryPrice, currentSize } = this.currentPosition;
@@ -174,7 +163,7 @@ export class RsiTradeBasedModel {
             2,
           )} USDT (${profitPercent.toFixed(2)}%), Minimum required: ${minProfitPercent}%`,
         );
-        this.closePosition(price, timestamp, rsi, atr);
+        this.closePosition(price, timestamp, rsi, atr, avgAtr);
       } else {
         // If we have an exit signal but insufficient profit, add to position instead (if we have capital)
         if (this.currentCapital >= addPositionSize / this.config.leverage && profitPercent < 0) {
@@ -184,7 +173,7 @@ export class RsiTradeBasedModel {
 
           if (rsiConditionMet) {
             console.log(`Instead of closing at a loss, adding ${addPositionSize} USDT to ${type} position at ${price}`);
-            this.averagePosition(price, addPositionSize, timestamp, rsi, atr);
+            this.averagePosition(price, addPositionSize, timestamp, rsi, atr, avgAtr);
           } else {
             console.log(
               `Not adding to ${type} position because RSI ${rsi.toFixed(2)} is not favorable (need ${
@@ -200,8 +189,7 @@ export class RsiTradeBasedModel {
   /**
    * Check if we should open new position or average down existing position
    */
-  private checkOpenPositions(price: number, rsi: number, timestamp: number, atr: number): void {
-    debugger;
+  private checkOpenPositions(price: number, rsi: number, timestamp: number, atr: number, avgAtr: number): void {
     // Get fixed position size from config (default to 10 if not specified)
     const fixedPositionSize = this.config.fixedPositionSize ?? 10;
     const addPositionSize = this.config.addPositionSize ?? fixedPositionSize / 2; // Default to half of initial size
@@ -213,13 +201,13 @@ export class RsiTradeBasedModel {
     if (!this.currentPosition) {
       // Check LONG entry condition
       if (rsi <= this.config.longEntryRsi && availableCapital >= fixedPositionSize) {
-        console.log(`Opening LONG position, RSI ${rsi.toFixed(2)} <= ${this.config.longEntryRsi} threshold`);
-        this.openPosition("LONG", price, fixedPositionSize, timestamp, rsi, atr); // Use fixed position size for initial entry
+        // console.log(`Opening LONG position, RSI ${rsi.toFixed(2)} <= ${this.config.longEntryRsi} threshold`);
+        this.openPosition("LONG", price, fixedPositionSize, timestamp, rsi, atr, avgAtr); // Use fixed position size for initial entry
       }
       // Check SHORT entry condition
       else if (rsi >= this.config.shortEntryRsi && availableCapital >= fixedPositionSize) {
-        console.log(`Opening SHORT position, RSI ${rsi.toFixed(2)} >= ${this.config.shortEntryRsi} threshold`);
-        this.openPosition("SHORT", price, fixedPositionSize, timestamp, rsi, atr); // Use fixed position size for initial entry
+        // console.log(`Opening SHORT position, RSI ${rsi.toFixed(2)} >= ${this.config.shortEntryRsi} threshold`);
+        this.openPosition("SHORT", price, fixedPositionSize, timestamp, rsi, atr, avgAtr); // Use fixed position size for initial entry
       }
     }
     // If we have an open position, check if we should add to it
@@ -246,24 +234,31 @@ export class RsiTradeBasedModel {
 
       let shouldAddPosition = false;
       let reasonToAdd = "";
-
+      debugger;
       if (type === "LONG") {
         // For LONG positions:
         // 1. Gap must be > threshold
         // 2. Current RSI must be lower than open RSI (more oversold)
         // 3. Must be in loss
-        if (priceGapPercent > this.config.breakEvenThreshold && rsi < this.currentPosition.openRsi && currentPnL < 0) {
+        console.log(`${this.config.atrTradeMultiplier} * ${avgAtr} AND ATR ${atr}`);
+        if (
+          priceGapPercent > this.config.breakEvenThreshold &&
+          rsi < this.currentPosition.openRsi &&
+          currentPnL < 0 &&
+          (this.config.atrTradeMultiplier > 0 ? atr >= this.config.atrTradeMultiplier * avgAtr : true)
+        ) {
           shouldAddPosition = true;
           reasonToAdd = `gap ${priceGapPercent.toFixed(2)}% > ${this.config.breakEvenThreshold}%, RSI ${rsi.toFixed(
             2,
           )} < ${this.currentPosition.openRsi} (open), PnL: ${currentPnL.toFixed(2)} USDT`;
         }
       } else {
-        // For SHORT positions:
-        // 1. Gap must be > threshold
-        // 2. Current RSI must be higher than open RSI (more overbought)
-        // 3. Must be in loss
-        if (priceGapPercent > this.config.breakEvenThreshold && rsi > this.currentPosition.openRsi && currentPnL < 0) {
+        if (
+          priceGapPercent > this.config.breakEvenThreshold &&
+          rsi > this.currentPosition.openRsi &&
+          currentPnL < 0 &&
+          (this.config.atrTradeMultiplier > 0 ? atr >= this.config.atrTradeMultiplier * avgAtr : true)
+        ) {
           shouldAddPosition = true;
           reasonToAdd = `gap ${priceGapPercent.toFixed(2)}% > ${this.config.breakEvenThreshold}%, RSI ${rsi.toFixed(
             2,
@@ -273,16 +268,16 @@ export class RsiTradeBasedModel {
 
       // Execute position addition if conditions are met
       if (shouldAddPosition && delayMet) {
-        this.averagePosition(price, addPositionSize, timestamp, rsi, atr); // Use addPositionSize instead
-        console.log(
-          `Adding to ${type} position at ${this.formatPrice(price)}, RSI: ${rsi.toFixed(
-            2,
-          )}, Adding: ${addPositionSize} USDT, Reason: ${reasonToAdd}, Time since last entry: ${readableTimeSinceLastEntry}`,
-        );
+        this.averagePosition(price, addPositionSize, timestamp, rsi, atr, avgAtr); // Use addPositionSize instead
+        // console.log(
+        //   `Adding to ${type} position at ${this.formatPrice(price)}, RSI: ${rsi.toFixed(
+        //     2,
+        //   )}, Adding: ${addPositionSize} USDT, Reason: ${reasonToAdd}, Time since last entry: ${readableTimeSinceLastEntry}`,
+        // );
       } else if (shouldAddPosition) {
-        console.log(
-          `Wanted to add to ${type} position but delay not met. Time since last entry: ${readableTimeSinceLastEntry}, required: ${readableRequiredDelay}`,
-        );
+        // console.log(
+        //   `Wanted to add to ${type} position but delay not met. Time since last entry: ${readableTimeSinceLastEntry}, required: ${readableRequiredDelay}`,
+        // );
       }
     }
   }
@@ -297,6 +292,7 @@ export class RsiTradeBasedModel {
     timestamp: number,
     rsi: number,
     atr: number,
+    avgAtr: number,
   ): void {
     // capital is already leveraged, so we don't multiply by leverage here
     // size will be in USDT
@@ -304,7 +300,7 @@ export class RsiTradeBasedModel {
 
     this.currentPosition = {
       type,
-      entries: [{ price, size, timestamp, entryRsi: rsi, pnl: 0, entryAtr: atr }],
+      entries: [{ price, size, timestamp, entryRsi: rsi, pnl: 0, entryAtr: atr, avgAtr: avgAtr }],
       averageEntryPrice: price,
       currentSize: size,
       openTimestamp: timestamp,
@@ -316,13 +312,20 @@ export class RsiTradeBasedModel {
     // Update current capital (divide capital by leverage to get required margin)
     this.currentCapital -= capital / this.config.leverage;
 
-    console.log(`Opening ${type} position at ${price}, RSI: ${rsi}, Size: ${size.toFixed(2)} USDT`);
+    // console.log(`Opening ${type} position at ${price}, RSI: ${rsi}, Size: ${size.toFixed(2)} USDT`);
   }
 
   /**
    * Add to an existing position (averaging down or up)
    */
-  private averagePosition(price: number, capital: number, timestamp: number, rsi: number, atr: number): void {
+  private averagePosition(
+    price: number,
+    capital: number,
+    timestamp: number,
+    rsi: number,
+    atr: number,
+    avgAtr: number,
+  ): void {
     if (!this.currentPosition) return;
     let profit = 0;
 
@@ -356,6 +359,7 @@ export class RsiTradeBasedModel {
       entryRsi: rsi,
       pnl: profit,
       entryAtr: atr,
+      avgAtr,
     });
 
     // Update last entry timestamp for delay tracking
@@ -375,7 +379,7 @@ export class RsiTradeBasedModel {
   /**
    * Close the current position
    */
-  private closePosition(price: number, timestamp: number, rsi: number, atr: number): void {
+  private closePosition(price: number, timestamp: number, rsi: number, atr: number, avgAtr: number): void {
     if (!this.currentPosition) return;
 
     const { type, averageEntryPrice, currentSize } = this.currentPosition;
@@ -409,7 +413,7 @@ export class RsiTradeBasedModel {
 
         if (rsiConditionMet) {
           console.log(`Instead of closing at a loss, adding ${fixedPositionSize} USDT to ${type} position at ${price}`);
-          this.averagePosition(price, fixedPositionSize, timestamp, rsi, atr);
+          this.averagePosition(price, fixedPositionSize, timestamp, rsi, atr, avgAtr);
         } else {
           console.log(
             `Not adding to ${type} position because RSI ${rsi.toFixed(2)} is not favorable (need ${

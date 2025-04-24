@@ -15,6 +15,10 @@ export interface TradeConfig {
   limit: number; // Number of candlesticks to fetch
   cacheTTL: number; // Time to live for candlesticks cache in minutes (0 = no cache)
   closeStrategy: "rsi" | "profit";
+  atrTradeMultiplier: number;
+  rsiPeriod: number; // Period for RSI calculation
+  atrPeriod: number; // Period for ATR calculation
+  avgAtrPeriod: number; // Period for Average ATR calculation
 }
 
 export type TradeType = "LONG" | "SHORT";
@@ -23,7 +27,15 @@ export type TradeStatus = "OPEN" | "CLOSED" | "NOT_COMPLETED";
 
 export interface TradePosition {
   type: TradeType;
-  entries: { price: number; size: number; timestamp: number; entryRsi: number; pnl: number; entryAtr: number }[];
+  entries: {
+    price: number;
+    size: number;
+    timestamp: number;
+    entryRsi: number;
+    pnl: number;
+    entryAtr: number;
+    avgAtr: number;
+  }[];
   averageEntryPrice: number;
   currentSize: number;
   openTimestamp: number;

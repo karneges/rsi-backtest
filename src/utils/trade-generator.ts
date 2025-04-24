@@ -5,6 +5,7 @@ export interface Trade {
   timestamp: number;
   rsi?: number; // Added RSI value for each trade
   atr?: number; // Added ATR value for each trade
+  avgAtr?: number; // Added ATR value for each trade
 }
 
 interface MarketState {

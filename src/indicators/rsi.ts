@@ -47,7 +47,8 @@ export function calculateRSI(prices: number[], period: number = 14): number[] {
 
 const calculateRsi = (candles: number[], period: number = 14) => {
   if (candles.length < period + 1) {
-    throw new Error(`Not enough data to calculate RSI with period ${period}`);
+    // throw new Error(`Not enough data to calculate RSI with period ${period}`);
+    return Array(candles.length).fill(50);
   }
 
   // Calculate RSI for candles
@@ -138,62 +139,83 @@ interface RSIAntATRResult {
 //       }
 //     }
 //   }
-export function calculateRSIWithTrades(candles: CandlestickWithTrades[], period: number = 14): RSIAntATRResult[] {
-  if (candles.length < period + 1) {
-    throw new Error(`Not enough data to calculate RSI and ATR with period ${period}`);
+function calculateAverageATR(atrValues: number[], period: number): number[] {
+  const avgATR: number[] = [];
+  for (let i = 0; i < atrValues.length; i++) {
+    if (i < period - 1) {
+      avgATR.push(0);
+    } else {
+      const slice = atrValues.slice(i - period + 1, i + 1);
+      const mean = slice.reduce((sum, value) => sum + value, 0) / period;
+      avgATR.push(mean);
+    }
+  }
+  return avgATR;
+}
+
+export type RsiAtrPeriodConfig = {
+  rsiPeriod: number;
+  atrPeriod: number;
+  avgAtrPeriod: number;
+};
+interface RSIResult {
+  candleRsi: number;
+  candleAtr: number;
+  avgCandleAtr: number;
+  trades: { rsi: number; atr: number; avgAtr?: number }[];
+}
+
+export function calculateRSIWithTrades(
+  candles: CandlestickWithTrades[],
+  periodConfig: RsiAtrPeriodConfig,
+): RSIResult[] {
+  if (candles.length < periodConfig.rsiPeriod + 1) {
+    throw new Error(`Not enough data to calculate RSI and ATR with period ${periodConfig.rsiPeriod}`);
   }
 
   // Calculate RSI for candles
   const finalCandleRSI = calculateRsi(
     candles.map((c) => c.closePrice),
-    period,
+    periodConfig.rsiPeriod,
   );
 
   // Calculate ATR for candles
-  const finalCandleATR = calculateATR(candles, period);
+  const finalCandleATR = calculateATR(candles, periodConfig.atrPeriod);
+
+  // Calculate average ATR
+  const avgCandleATR = calculateAverageATR(finalCandleATR, periodConfig.avgAtrPeriod);
 
   // Initialize result array
-  const result: RSIAntATRResult[] = candles.map((_, i) => ({
+  const result: RSIResult[] = candles.map((_, i) => ({
     candleRsi: finalCandleRSI[i],
     candleAtr: finalCandleATR[i],
+    avgCandleAtr: avgCandleATR[i],
     trades: [],
   }));
 
   // Calculate RSI and ATR for trades
-  for (let i = period; i < candles.length; i++) {
+  for (let i = periodConfig.rsiPeriod; i < candles.length; i++) {
     if (candles[i].trades.length > 0) {
-      // Get previous candles
       const prevCandles = candles.slice(0, i);
-
-      // Calculate RSI and ATR for each trade
       for (const trade of candles[i].trades) {
-        // Create temporary candle with trade price as closePrice
         const tempCandle: CandlestickWithTrades = {
           ...candles[i],
           closePrice: trade.price,
-          highPrice: Math.max(candles[i].highPrice, trade.price),
-          lowPrice: Math.min(candles[i].lowPrice, trade.price),
-          trades: [], // No nested trades
+          highPrice: trade.price,
+          lowPrice: trade.price,
+          trades: [],
         };
-
-        // Create temporary array for RSI and ATR calculations
         const tempCandles = [...prevCandles, tempCandle];
-
-        // Calculate RSI
         const tempRsi = calculateRsi(
           tempCandles.map((c) => c.closePrice),
-          period,
+          periodConfig.rsiPeriod,
         );
-        const tradeRsi = tempRsi[tempRsi.length - 1];
-
-        // Calculate ATR
-        const tempAtr = calculateATR(tempCandles, period);
-        const tradeAtr = tempAtr[tempAtr.length - 1];
-
-        // Add RSI and ATR for the trade
+        const tempAtr = calculateATR(tempCandles, periodConfig.atrPeriod);
+        debugger;
         result[i].trades.push({
-          rsi: tradeRsi,
-          atr: tradeAtr,
+          rsi: tempRsi[tempRsi.length - 1],
+          atr: tempAtr[tempAtr.length - 1],
+          avgAtr: avgCandleATR[i],
         });
       }
     }

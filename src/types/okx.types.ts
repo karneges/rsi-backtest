@@ -63,6 +63,7 @@ export interface CandlestickWithSubCandlesticksAndRsi extends Candlestick {
 
   rsi: number;
   atr: number;
+  avgAtr: number;
 }
 
 // Raw candlestick data as returned by OKX API
@@ -76,3 +77,15 @@ export type RawCandlestick = [
   string, // volCcy
   string, // confirm
 ];
+
+export type OkxCandlesticksData = {
+  subCandlesticks: Candlestick[];
+  timestamp: number;
+  openPrice: number;
+  highPrice: number;
+  lowPrice: number;
+  closePrice: number;
+  volume: number;
+  volumeCurrency: number;
+  confirmationFlag: number;
+};

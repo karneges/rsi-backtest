@@ -15,7 +15,6 @@ export class RsiTradeBasedModel {
   private lastProcessedPrice: number = 0;
 
   constructor(config: TradeConfig, candles: CandlestickWithSubCandlesticksAndRsi[], initialCapital: number = 10000) {
-    debugger;
     this.config = config;
     this.initialCapital = initialCapital;
     this.currentCapital = initialCapital;
@@ -26,7 +25,7 @@ export class RsiTradeBasedModel {
   /**
    * Run backtest using trade data for more accurate price movement simulation
    */
-  async runTradeBasedBacktest(): Promise<BacktestResult> {
+  runTradeBasedBacktest(): BacktestResult {
     // Initialize metrics
     let maxDrawdown = 0;
     let currentDrawdown = 0;
@@ -234,7 +233,6 @@ export class RsiTradeBasedModel {
 
       let shouldAddPosition = false;
       let reasonToAdd = "";
-      debugger;
       if (type === "LONG") {
         // For LONG positions:
         // 1. Gap must be > threshold

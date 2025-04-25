@@ -222,7 +222,6 @@ export class OKXService {
       };
     });
     const rsiResult = calculateRSIWithTrades(generatedTrades, periodConfig);
-    debugger;
     generatedTrades.forEach((candle, index) => {
       //@ts-ignore
       candle.rsi = rsiResult[index].candleRsi;
@@ -238,3 +237,44 @@ export class OKXService {
     return generatedTrades;
   };
 }
+
+export const generateData = (
+  candlesticksWithSubCandlesticks: OkxCandlesticksData[],
+  periodConfig: RsiAtrPeriodConfig,
+  callBacks: {
+    onTradesGenerationProgress?: (amountOfTrades: number, totalAmount: number) => void;
+    onTradesGenerationStart?: (amountOfTrades: number) => void;
+  },
+): CandlestickWithSubCandlesticksAndRsi[] => {
+  debugger;
+  callBacks.onTradesGenerationStart?.(candlesticksWithSubCandlesticks.length * 15 * 60);
+  const generatedTrades = candlesticksWithSubCandlesticks.map((candlestick) => {
+    const generatedTradesWithSubCandlesticks = candlestick.subCandlesticks.map((subCandlestick) => {
+      const trades = generateSyntheticTrades({ ...subCandlestick }, 60);
+      return trades;
+    });
+    debugger;
+    callBacks.onTradesGenerationProgress?.(
+      generatedTradesWithSubCandlesticks.flat().length,
+      candlesticksWithSubCandlesticks.length * 15 * 60,
+    );
+    return {
+      ...candlestick,
+      trades: generatedTradesWithSubCandlesticks.flat(),
+    };
+  });
+  const rsiResult = calculateRSIWithTrades(generatedTrades, periodConfig);
+  generatedTrades.forEach((candle, index) => {
+    //@ts-ignore
+    candle.rsi = rsiResult[index].candleRsi;
+    //@ts-ignore
+    candle.atr = rsiResult[index].candleAtr;
+    candle.trades.forEach((trade, tradeIndex) => {
+      trade.rsi = rsiResult[index].trades[tradeIndex]?.rsi || 50;
+      trade.atr = rsiResult[index].trades[tradeIndex]?.atr || 0;
+      trade.avgAtr = rsiResult[index].trades[tradeIndex]?.avgAtr || 0;
+    });
+  });
+  //@ts-ignore
+  return generatedTrades;
+};

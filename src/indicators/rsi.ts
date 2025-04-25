@@ -211,7 +211,6 @@ export function calculateRSIWithTrades(
           periodConfig.rsiPeriod,
         );
         const tempAtr = calculateATR(tempCandles, periodConfig.atrPeriod);
-        debugger;
         result[i].trades.push({
           rsi: tempRsi[tempRsi.length - 1],
           atr: tempAtr[tempAtr.length - 1],

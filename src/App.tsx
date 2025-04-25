@@ -2,12 +2,13 @@ import React, { useState, useEffect } from "react";
 import { TradingModelForm } from "./components/TradingModelForm";
 import { TradeConfig, BacktestResult } from "./types";
 import { RsiTradeBasedModel } from "./models/rsiTradeBasedModel";
-import { OKXService } from "./services/okx.service";
+import { generateData, OKXService } from "./services/okx.service";
 import { TradingViewChart } from "./components/TradingViewChart";
 import { CandlestickWithSubCandlesticksAndRsi, OkxCandlesticksData } from "./types/okx.types";
 import { TradeTable } from "./components/TradeTable";
 import "./App.css";
 import { ProgressLoader } from "./components/ProgressLoader";
+import { useDataWorker } from "./hooks/useDataWorker";
 
 interface OkxCacheEntry {
   //   data: CandlestickWithSubCandlesticksAndRsi[];
@@ -42,7 +43,6 @@ const getConfigFromUrl = (): Partial<TradeConfig> => {
     "avgAtrPeriod",
     "atrTradeMultiplier",
   ];
-  debugger;
   // Parse all parameters
   params.forEach((value, key) => {
     if (numberParams.includes(key)) {
@@ -77,6 +77,8 @@ const updateUrlWithConfig = (config: TradeConfig) => {
   window.history.pushState({}, "", newUrl);
 };
 
+type Stage = "idle" | "main-candles" | "sub-candles" | "trades" | "processing" | "complete";
+
 const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,34 +92,30 @@ const App: React.FC = () => {
   const [mainCandlesProgress, setMainCandlesProgress] = useState(0);
   const [subCandlesProgress, setSubCandlesProgress] = useState(0);
   const [tradesProgress, setTradesProgress] = useState(0);
-  const [stage, setStage] = useState<"idle" | "main-candles" | "sub-candles" | "trades" | "complete">("idle");
+  const [stage, setStage] = useState<Stage>("idle");
   const [totalMainCandles, setTotalMainCandles] = useState(0);
   const [totalSubCandles, setTotalSubCandles] = useState(0);
   const [totalTrades, setTotalTrades] = useState(0);
+  const { generateDataAsync, backTestAsync } = useDataWorker();
 
   // Load initial config from URL on mount
   useEffect(() => {
     const urlConfig = getConfigFromUrl();
     if (Object.keys(urlConfig).length > 0) {
-      debugger;
       setInitialConfig(urlConfig);
     }
   }, []);
 
   const handleSubmit = async (config: TradeConfig) => {
-    // Update URL with new config
-    updateUrlWithConfig(config);
-
-    setIsLoading(true);
     setError(null);
-    setResult(null);
-    setStage("idle");
+    setIsLoading(true);
+    setStage("main-candles");
 
     try {
-      //   let data: CandlestickWithSubCandlesticksAndRsi[];
       let data: OkxCandlesticksData[];
       const cacheKey = config.symbol;
       const now = Date.now();
+      let candlesReFetched = false;
 
       // Check if we have valid cached data
       const isOkxCacheValid =
@@ -193,7 +191,7 @@ const App: React.FC = () => {
         );
 
         // Cache the new data if caching is enabled
-
+        candlesReFetched = true;
         if (config.cacheTTL > 0) {
           setOkxCachedData((prev) => ({
             ...prev,
@@ -207,35 +205,52 @@ const App: React.FC = () => {
         }
       }
       const historicalDataKey = cacheKey + config.atrPeriod + config.rsiPeriod + config.avgAtrPeriod;
-      //   let generatedData = okxService.generateData(data, {
-      //     atrPeriod: config.atrPeriod,
-      //     rsiPeriod: config.rsiPeriod,
-      //     avgAtrPeriod: config.avgAtrPeriod,
-      //   });
-
-      if (historicalDataKey !== historicalDataKeyState || !historicalData) {
+      // TODO fix cache
+      let generatedData: CandlestickWithSubCandlesticksAndRsi[] = historicalData || [];
+      if (historicalDataKey !== historicalDataKeyState || !historicalData || candlesReFetched) {
         setIsLoading(true);
         setStage("trades");
         setTradesProgress(0);
-        setHistoricalData(
-          okxService.generateData(data, {
+        generatedData = await generateDataAsync(
+          data,
+          {
             atrPeriod: config.atrPeriod,
             rsiPeriod: config.rsiPeriod,
             avgAtrPeriod: config.avgAtrPeriod,
-          }),
+          },
+          {
+            onTradesGenerationStart: (amountOfTrades: number) => {
+              setTotalTrades(amountOfTrades);
+              setTradesProgress(0);
+            },
+            onTradesGenerationProgress: (amountOfTrades: number) => {
+              setTradesProgress(amountOfTrades);
+            },
+          },
         );
+        setHistoricalData(generatedData);
         setHistoricalDataKey(historicalDataKey);
       }
       // Initialize the trading model with the config and historical data
-      const model = new RsiTradeBasedModel(config, historicalData!);
+      // const model = new RsiTradeBasedModel(config, generatedData!);
 
-      // Run the backtest
-      const backtestResult = await model.runTradeBasedBacktest();
+      // // Run the backtest
+      // const backtestResult = await model.runTradeBasedBacktest();
 
-      setResult(backtestResult);
+      // setResult(backtestResult);
+      setStage("processing");
+
+      // Run backtest with processed data
+      // const modelProcessed = new RsiTradeBasedModel(config, generatedData!);
+      // const resultProcessed = await modelProcessed.runTradeBasedBacktest();
+      const resultProcessed = await backTestAsync(generatedData, config);
+      setResult(resultProcessed);
+      setHistoricalData(generatedData!);
+      setStage("complete");
+      setIsLoading(false);
     } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : "An unexpected error occurred");
+      console.error("Error:", err);
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -270,7 +285,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {result && historicalData && (
+        {result && historicalData && !isLoading && (
           <div className="results">
             <h2>Backtest Results</h2>
             <div className="stats-grid">

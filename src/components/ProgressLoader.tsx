@@ -1,11 +1,11 @@
-import React from 'react';
-import './ProgressLoader.css';
+import React from "react";
+import "./ProgressLoader.css";
 
 interface ProgressLoaderProps {
   mainCandlesProgress: number;
   subCandlesProgress: number;
   tradesProgress: number;
-  stage: 'idle' | 'main-candles' | 'sub-candles' | 'trades' | 'complete';
+  stage: "idle" | "main-candles" | "sub-candles" | "trades" | "processing" | "complete";
   totalMainCandles: number;
   totalSubCandles: number;
   totalTrades: number;
@@ -18,92 +18,48 @@ export const ProgressLoader: React.FC<ProgressLoaderProps> = ({
   stage,
   totalMainCandles,
   totalSubCandles,
-  totalTrades
+  totalTrades,
 }) => {
   const getStageText = () => {
     switch (stage) {
-      case 'main-candles':
-        return 'Fetching main candlestick data...';
-      case 'sub-candles':
-        return 'Fetching sub-candlestick data...';
-      case 'trades':
-        return 'Generating trades...';
-      case 'complete':
-        return 'Processing complete!';
+      case "main-candles":
+        return `Fetching main candlesticks (${mainCandlesProgress}/${totalMainCandles})...`;
+      case "sub-candles":
+        return `Fetching sub candlesticks (${subCandlesProgress}/${totalSubCandles})...`;
+      case "trades":
+        return `Generating trades (${tradesProgress}/${totalTrades})...`;
+      case "processing":
+        return "Processing data in background...";
+      case "complete":
+        return "Complete!";
       default:
-        return 'Initializing...';
+        return "Preparing...";
     }
   };
 
-  const getProgress = (current: number, total: number) => {
-    if (total === 0) return 0;
-    return Math.min(100, Math.round((current / total) * 100));
+  const getProgress = () => {
+    switch (stage) {
+      case "main-candles":
+        return (mainCandlesProgress / totalMainCandles) * 100;
+      case "sub-candles":
+        return (subCandlesProgress / totalSubCandles) * 100;
+      case "trades":
+        return (tradesProgress / totalTrades) * 100;
+      case "processing":
+        return 100; // Show full progress bar during processing
+      case "complete":
+        return 100;
+      default:
+        return 0;
+    }
   };
 
   return (
     <div className="progress-loader">
-      <div className="progress-status">
-        <h3>{getStageText()}</h3>
-        
-        <div className="progress-bars">
-          <div className="progress-section">
-            <div className="progress-label">
-              <span>Main Candles</span>
-              <span>{getProgress(mainCandlesProgress, totalMainCandles)}%</span>
-            </div>
-            <div className="progress-bar">
-              <div 
-                className="progress-fill"
-                style={{ 
-                  width: `${getProgress(mainCandlesProgress, totalMainCandles)}%`,
-                  backgroundColor: stage === 'main-candles' ? '#4299e1' : '#48bb78'
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="progress-section">
-            <div className="progress-label">
-              <span>Sub Candles</span>
-              <span>{getProgress(subCandlesProgress, totalSubCandles)}%</span>
-            </div>
-            <div className="progress-bar">
-              <div 
-                className="progress-fill"
-                style={{ 
-                  width: `${getProgress(subCandlesProgress, totalSubCandles)}%`,
-                  backgroundColor: stage === 'sub-candles' ? '#4299e1' : 
-                                 stage === 'main-candles' ? '#e2e8f0' : '#48bb78'
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="progress-section">
-            <div className="progress-label">
-              <span>Trades</span>
-              <span>{getProgress(tradesProgress, totalTrades)}%</span>
-            </div>
-            <div className="progress-bar">
-              <div 
-                className="progress-fill"
-                style={{ 
-                  width: `${getProgress(tradesProgress, totalTrades)}%`,
-                  backgroundColor: stage === 'trades' ? '#4299e1' : 
-                                 stage === 'complete' ? '#48bb78' : '#e2e8f0'
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {stage === 'complete' && (
-          <div className="completion-message">
-            <span className="checkmark">✓</span>
-            Ready to display results
-          </div>
-        )}
+      <div className="progress-text">{getStageText()}</div>
+      <div className="progress-bar">
+        <div className="progress-fill" style={{ width: `${getProgress()}%` }} />
       </div>
     </div>
   );
-}; 
+};

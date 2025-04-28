@@ -132,17 +132,15 @@ export const TradeTable: React.FC<TradeTableProps> = ({ result }) => {
                         // Calculate cumulative position details up to this entry
                         const entriesUpToHere = trade.entries.slice(0, entryIndex + 1);
                         const currentPositionSize = entriesUpToHere.reduce((sum, e) => sum + e.size, 0);
-                        const weightedSum = entriesUpToHere.reduce((sum, e) => sum + e.price * e.size, 0);
-                        const avgEntry = weightedSum / currentPositionSize;
-                        const gapFromAvg = ((entry.price - avgEntry) / avgEntry) * 100;
+                        const gapFromAvg = ((entry.price - entry.breakevenPrice) / entry.breakevenPrice) * 100;
 
                         return (
                           <tr key={entryIndex}>
                             <td>{new Date(entry.timestamp).toLocaleString()}</td>
-                            <td>{entry.price.toFixed(2)}</td>
+                            <td>{entry.price.toFixed(8)}</td>
                             <td>{entry.size.toFixed(2)}</td>
                             <td>{currentPositionSize.toFixed(2)}</td>
-                            <td>{avgEntry.toFixed(2)}</td>
+                            <td>{entry.breakevenPrice.toFixed(8)}</td>
                             <td className={gapFromAvg >= 0 ? "profit" : "loss"}>{gapFromAvg.toFixed(2)}%</td>
                             <td>{entry.entryRsi.toFixed(2)}</td>
                             <td className={entry.pnl >= 0 ? "profit" : "loss"}>{entry.pnl.toFixed(2)} USDT</td>

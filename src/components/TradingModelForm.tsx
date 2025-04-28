@@ -94,21 +94,20 @@ export const TradingModelForm: React.FC<TradingModelFormProps> = ({ onSubmit, in
     setConfig((prev) => ({
       ...prev,
       [name]:
-        name.includes("rsi") ||
-        name.includes("leverage") ||
-        name.includes("size") ||
-        name.includes("threshold") ||
-        name.includes("percent") ||
-        name.includes("entries") ||
-        name.includes("atr") ||
-        name === "limit" ||
-        name === "cacheTTL" ||
-        name === "atrPeriod" ||
-        name == "avgAtrPeriod" ||
-        name === "atrTradeMultiplier" ||
-        name.includes("period")
-          ? Number(value)
-          : value,
+        // name.includes("rsi") ||
+        // name.includes("leverage") ||
+        // name.includes("size") ||
+        // name.includes("threshold") ||
+        // name.includes("percent") ||
+        // name.includes("entries") ||
+        // name.includes("atr") ||
+        // name === "limit" ||
+        // name === "cacheTTL" ||
+        // name === "atrPeriod" ||
+        // name == "avgAtrPeriod" ||
+        // name === "atrTradeMultiplier" ||
+        // name.includes("period")
+        type === "number" ? Number(value) : value,
     }));
   };
 

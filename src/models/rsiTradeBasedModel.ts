@@ -298,7 +298,9 @@ export class RsiTradeBasedModel {
 
     this.currentPosition = {
       type,
-      entries: [{ price, size, timestamp, entryRsi: rsi, pnl: 0, entryAtr: atr, avgAtr: avgAtr }],
+      entries: [
+        { price, size, timestamp, entryRsi: rsi, pnl: 0, entryAtr: atr, avgAtr: avgAtr, breakevenPrice: price },
+      ],
       averageEntryPrice: price,
       currentSize: size,
       openTimestamp: timestamp,
@@ -349,17 +351,6 @@ export class RsiTradeBasedModel {
     // size will be in USDT
     const additionalSize = capital;
 
-    // Add new entry to the position
-    this.currentPosition.entries.push({
-      price,
-      size: additionalSize,
-      timestamp,
-      entryRsi: rsi,
-      pnl: profit,
-      entryAtr: atr,
-      avgAtr,
-    });
-
     // Update last entry timestamp for delay tracking
     this.currentPosition.lastEntryTimestamp = timestamp;
 
@@ -372,6 +363,17 @@ export class RsiTradeBasedModel {
 
     // Update current capital (divide capital by leverage to get required margin)
     this.currentCapital -= capital / this.config.leverage;
+    // Add new entry to the position
+    this.currentPosition.entries.push({
+      price,
+      size: additionalSize,
+      timestamp,
+      entryRsi: rsi,
+      pnl: profit,
+      entryAtr: atr,
+      avgAtr,
+      breakevenPrice: this.currentPosition.averageEntryPrice,
+    });
   }
 
   /**

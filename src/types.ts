@@ -35,6 +35,7 @@ export interface TradePosition {
     pnl: number;
     entryAtr: number;
     avgAtr: number;
+    breakevenPrice: number;
   }[];
   averageEntryPrice: number;
   currentSize: number;

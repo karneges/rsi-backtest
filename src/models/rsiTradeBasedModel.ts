@@ -103,13 +103,13 @@ export class RsiTradeBasedModel {
         this.closePosition(lastPrice, lastCandle.timestamp, lastCandle.rsi!, lastCandle.atr!, lastCandle.avgAtr!);
       }
     }
-    this.positionTrades = this.positionTrades.filter((t) => {
-      if (!t.closeTimestamp) {
-        return true;
-      }
-      const timeDiff = t.closeTimestamp - t.openTimestamp;
-      return timeDiff > 1000 * 60 * 15;
-    });
+    // this.positionTrades = this.positionTrades.filter((t) => {
+    //   if (!t.closeTimestamp) {
+    //     return true;
+    //   }
+    //   const timeDiff = t.closeTimestamp - t.openTimestamp;
+    //   return timeDiff > 1000 * 60 * 15;
+    // });
 
     // Calculate statistics
     const stats = this.calculateStats();

@@ -247,6 +247,7 @@ const App: React.FC = () => {
       setResult(resultProcessed);
       setHistoricalData(generatedData!);
       setStage("complete");
+      updateUrlWithConfig(config);
       setIsLoading(false);
     } catch (err) {
       console.error("Error:", err);

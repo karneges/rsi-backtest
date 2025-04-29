@@ -283,14 +283,15 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({ result, hist
 
             // Add entry markers
             trade.entries.forEach((entry, index) => {
-              const candleKey = `${entry.entryCandleTimestamp}`;
+              const isInitialEntry = index === 0;
+
+              const candleKey = `${entry.entryCandleTimestamp} + ${isInitialEntry.toString()}`;
               if (marketCandles[candleKey]) {
                 debugger;
                 return;
               }
               marketCandles[candleKey] = true;
               console.log(entry.entryCandleTimestamp);
-              const isInitialEntry = index === 0;
               chart.createShape(
                 {
                   time: entry.timestamp / 1000,

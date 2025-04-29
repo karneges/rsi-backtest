@@ -37,6 +37,7 @@ export interface TradePosition {
     entryAtr: number;
     avgAtr: number;
     breakevenPrice: number;
+    entryCandleTimestamp: number;
   }[];
   averageEntryPrice: number;
   currentSize: number;

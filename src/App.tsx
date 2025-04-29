@@ -243,7 +243,6 @@ const App: React.FC = () => {
       // Run backtest with processed data
       // const modelProcessed = new RsiTradeBasedModel(config, generatedData!);
       // const resultProcessed = await modelProcessed.runTradeBasedBacktest();
-      debugger;
       const resultProcessed = await backTestAsync(generatedData, config);
       setResult(resultProcessed);
       setHistoricalData(generatedData!);
@@ -318,36 +317,6 @@ const App: React.FC = () => {
               <TradingViewChart result={result} historicalData={historicalData} />
             </div>
             <TradeTable result={result} />
-
-            <div className="recent-trades">
-              <h3>Recent Trades</h3>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Type</th>
-                    <th>Entry Time</th>
-                    <th>Exit Time</th>
-                    <th>Entry Price</th>
-                    <th>Exit Price</th>
-                    <th>Profit/Loss</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.trades.map((trade, index) => (
-                    <tr key={index}>
-                      <td>{trade.type}</td>
-                      <td>{new Date(trade.openTimestamp).toLocaleString()}</td>
-                      <td>{trade.closeTimestamp ? new Date(trade.closeTimestamp).toLocaleString() : "Open"}</td>
-                      <td>{trade.averageEntryPrice.toFixed(2)}</td>
-                      <td>{trade.closePrice?.toFixed(2) || "-"}</td>
-                      <td className={trade.profit && trade.profit >= 0 ? "profit" : "loss"}>
-                        {trade.profit?.toFixed(2) || "-"} USDT ({trade.profitPercent?.toFixed(2) || "-"}%)
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </div>
         )}
       </main>

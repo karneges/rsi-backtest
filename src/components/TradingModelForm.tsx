@@ -85,7 +85,6 @@ export const TradingModelForm: React.FC<TradingModelFormProps> = ({ onSubmit, in
   }, [config]);
 
   const handleSubmit = (e: React.FormEvent) => {
-    debugger;
     e.preventDefault();
     onSubmit(config);
   };

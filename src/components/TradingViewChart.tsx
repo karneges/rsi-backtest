@@ -277,12 +277,19 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({ result, hist
         // Add trade markers if available
         if (result.trades && result.trades.length > 0) {
           const chart = tvWidget.chart();
-
+          const marketCandles: Record<string, boolean> = {};
           result.trades.forEach((trade) => {
             const color = trade.type === "LONG" ? "#26a69a" : "#ef5350";
 
             // Add entry markers
             trade.entries.forEach((entry, index) => {
+              const candleKey = `${entry.entryCandleTimestamp}`;
+              if (marketCandles[candleKey]) {
+                debugger;
+                return;
+              }
+              marketCandles[candleKey] = true;
+              console.log(entry.entryCandleTimestamp);
               const isInitialEntry = index === 0;
               chart.createShape(
                 {

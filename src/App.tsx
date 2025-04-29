@@ -243,6 +243,7 @@ const App: React.FC = () => {
       // Run backtest with processed data
       // const modelProcessed = new RsiTradeBasedModel(config, generatedData!);
       // const resultProcessed = await modelProcessed.runTradeBasedBacktest();
+      debugger;
       const resultProcessed = await backTestAsync(generatedData, config);
       setResult(resultProcessed);
       setHistoricalData(generatedData!);

@@ -29,6 +29,7 @@ const DEFAULT_CONFIG: TradeConfig & { version: number } = {
   atrPeriod: 14,
   avgAtrPeriod: 14,
   atrTradeMultiplier: 0,
+  switchCloseStrategyNotional: 100,
 };
 
 const STORAGE_KEY = "trading_model_config";
@@ -84,6 +85,7 @@ export const TradingModelForm: React.FC<TradingModelFormProps> = ({ onSubmit, in
   }, [config]);
 
   const handleSubmit = (e: React.FormEvent) => {
+    debugger;
     e.preventDefault();
     onSubmit(config);
   };
@@ -93,21 +95,7 @@ export const TradingModelForm: React.FC<TradingModelFormProps> = ({ onSubmit, in
 
     setConfig((prev) => ({
       ...prev,
-      [name]:
-        // name.includes("rsi") ||
-        // name.includes("leverage") ||
-        // name.includes("size") ||
-        // name.includes("threshold") ||
-        // name.includes("percent") ||
-        // name.includes("entries") ||
-        // name.includes("atr") ||
-        // name === "limit" ||
-        // name === "cacheTTL" ||
-        // name === "atrPeriod" ||
-        // name == "avgAtrPeriod" ||
-        // name === "atrTradeMultiplier" ||
-        // name.includes("period")
-        type === "number" ? Number(value) : value,
+      [name]: type === "number" ? Number(value) : value,
     }));
   };
 
@@ -308,7 +296,21 @@ export const TradingModelForm: React.FC<TradingModelFormProps> = ({ onSubmit, in
             <select id="closeStrategy" name="closeStrategy" value={config.closeStrategy} onChange={handleChange}>
               <option value="rsi">RSI + Profit</option>
               <option value="profit">Profit</option>
+              <option value="hybrid">Hybrid</option>
             </select>
+            {config.closeStrategy === "hybrid" && (
+              <div className="form-group">
+                <label htmlFor="switchCloseStrategyNotional">Switch Close Strategy Notional</label>
+                <input
+                  type="number"
+                  min="10"
+                  id="switchCloseStrategyNotional"
+                  name="switchCloseStrategyNotional"
+                  value={config.switchCloseStrategyNotional}
+                  onChange={handleChange}
+                />
+              </div>
+            )}
           </div>
 
           <div className="form-group">

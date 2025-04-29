@@ -246,14 +246,12 @@ export const generateData = (
     onTradesGenerationStart?: (amountOfTrades: number) => void;
   },
 ): CandlestickWithSubCandlesticksAndRsi[] => {
-  debugger;
   callBacks.onTradesGenerationStart?.(candlesticksWithSubCandlesticks.length * 15 * 60);
   const generatedTrades = candlesticksWithSubCandlesticks.map((candlestick) => {
     const generatedTradesWithSubCandlesticks = candlestick.subCandlesticks.map((subCandlestick) => {
       const trades = generateSyntheticTrades({ ...subCandlestick }, 60);
       return trades;
     });
-    debugger;
     callBacks.onTradesGenerationProgress?.(
       generatedTradesWithSubCandlesticks.flat().length,
       candlesticksWithSubCandlesticks.length * 15 * 60,

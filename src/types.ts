@@ -14,7 +14,8 @@ export interface TradeConfig {
   timeframe: string;
   limit: number; // Number of candlesticks to fetch
   cacheTTL: number; // Time to live for candlesticks cache in minutes (0 = no cache)
-  closeStrategy: "rsi" | "profit";
+  closeStrategy: "rsi" | "profit" | "hybrid";
+  switchCloseStrategyNotional: number; // Notional value at which to switch between strategies
   atrTradeMultiplier: number;
   rsiPeriod: number; // Period for RSI calculation
   atrPeriod: number; // Period for ATR calculation

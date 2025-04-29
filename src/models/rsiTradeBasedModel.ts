@@ -1,7 +1,11 @@
 import { BacktestResult, TradeConfig, TradePosition, TradeStats } from "../types";
 
 import { CandlestickWithSubCandlesticksAndRsi } from "../types/okx.types";
-
+enum CloseStrategyState {
+  RSI = "rsi",
+  PROFIT = "profit",
+  HYBRID = "hybrid",
+}
 export class RsiTradeBasedModel {
   private config: TradeConfig;
 
@@ -13,6 +17,7 @@ export class RsiTradeBasedModel {
   private currentCapital: number;
   private equityCurve: { timestamp: number; equity: number }[] = [];
   private lastProcessedPrice: number = 0;
+  private closeStrategyState: CloseStrategyState;
 
   constructor(config: TradeConfig, candles: CandlestickWithSubCandlesticksAndRsi[], initialCapital: number = 10000) {
     this.config = config;
@@ -20,6 +25,7 @@ export class RsiTradeBasedModel {
     this.currentCapital = initialCapital;
     // Convert candles to the candlesWithTrades format
     this.candlesWithTrades = candles;
+    this.closeStrategyState = config.closeStrategy as CloseStrategyState;
   }
 
   /**
@@ -103,13 +109,6 @@ export class RsiTradeBasedModel {
         this.closePosition(lastPrice, lastCandle.timestamp, lastCandle.rsi!, lastCandle.atr!, lastCandle.avgAtr!);
       }
     }
-    // this.positionTrades = this.positionTrades.filter((t) => {
-    //   if (!t.closeTimestamp) {
-    //     return true;
-    //   }
-    //   const timeDiff = t.closeTimestamp - t.openTimestamp;
-    //   return timeDiff > 1000 * 60 * 15;
-    // });
 
     // Calculate statistics
     const stats = this.calculateStats();
@@ -131,7 +130,6 @@ export class RsiTradeBasedModel {
     if (!this.currentPosition) return;
 
     const { type, averageEntryPrice, currentSize } = this.currentPosition;
-    const addPositionSize = this.config.addPositionSize ?? this.config.fixedPositionSize / 2; // Default to half of initial size
 
     // Calculate profit in USDT
     let profit = 0;
@@ -149,39 +147,39 @@ export class RsiTradeBasedModel {
     const minProfitPercent = this.config.minProfitPercent ?? 1.0;
 
     // Check exit conditions: RSI exit signal AND minimum profit achieved
-    const rsiExitSignal =
-      (type === "LONG" && rsi >= this.config.longExitRsi) || (type === "SHORT" && rsi <= this.config.shortExitRsi);
 
-    const isReadyToClose = this.config.closeStrategy === "rsi" ? rsiExitSignal : profitPercent >= minProfitPercent;
-
-    if (isReadyToClose) {
-      // Only close if profit is at least the minimum required
-      if (profitPercent >= minProfitPercent) {
-        console.log(
-          `Closing ${type} position at ${price}, RSI: ${rsi.toFixed(2)}, Profit: ${profit.toFixed(
-            2,
-          )} USDT (${profitPercent.toFixed(2)}%), Minimum required: ${minProfitPercent}%`,
-        );
-        this.closePosition(price, timestamp, rsi, atr, avgAtr);
-      } else {
-        // If we have an exit signal but insufficient profit, add to position instead (if we have capital)
-        if (this.currentCapital >= addPositionSize / this.config.leverage && profitPercent < 0) {
-          // Only add to LONG positions if RSI is below 50
-          // Only add to SHORT positions if RSI is above 50
-          const rsiConditionMet = (type === "LONG" && rsi <= 50) || (type === "SHORT" && rsi >= 50);
-
-          if (rsiConditionMet) {
-            console.log(`Instead of closing at a loss, adding ${addPositionSize} USDT to ${type} position at ${price}`);
-            this.averagePosition(price, addPositionSize, timestamp, rsi, atr, avgAtr);
+    // const isReadyToClose = this.config.closeStrategy === "rsi" ? rsiExitSignal : profitPercent >= minProfitPercent;
+    const isReadyToClose = () => {
+      if (profitPercent < minProfitPercent) {
+        return false;
+      }
+      const rsiExitSignal =
+        (type === "LONG" && rsi >= this.config.longExitRsi) || (type === "SHORT" && rsi <= this.config.shortExitRsi);
+      switch (this.closeStrategyState) {
+        case CloseStrategyState.RSI:
+          return rsiExitSignal;
+        case CloseStrategyState.PROFIT:
+          return profitPercent >= minProfitPercent;
+        case CloseStrategyState.HYBRID: {
+          debugger;
+          if ((this.currentPosition?.currentSize || 0) >= this.config.switchCloseStrategyNotional) {
+            return profitPercent >= minProfitPercent;
           } else {
-            console.log(
-              `Not adding to ${type} position because RSI ${rsi.toFixed(2)} is not favorable (need ${
-                type === "LONG" ? "<= 50" : ">= 50"
-              })`,
-            );
+            return rsiExitSignal;
           }
         }
       }
+    };
+
+    if (isReadyToClose()) {
+      // Only close if profit is at least the minimum required
+      console.log(
+        `Closing ${type} position at ${price}, RSI: ${rsi.toFixed(2)}, Profit: ${profit.toFixed(
+          2,
+        )} USDT (${profitPercent.toFixed(2)}%), Minimum required: ${minProfitPercent}%`,
+      );
+      this.closePosition(price, timestamp, rsi, atr, avgAtr);
+      return;
     }
   }
 
@@ -216,8 +214,7 @@ export class RsiTradeBasedModel {
 
       // Check time delay since last entry
       const timeSinceLastEntry = timestamp - lastEntryTimestamp;
-      const readableTimeSinceLastEntry = (timeSinceLastEntry / 1000).toFixed(1) + "s";
-      const readableRequiredDelay = (this.config.positionAddDelay / 1000).toFixed(1) + "s";
+
       const delayMet = timeSinceLastEntry >= this.config.positionAddDelay;
 
       // Calculate price gap from break-even
@@ -234,29 +231,22 @@ export class RsiTradeBasedModel {
       let shouldAddPosition = false;
       let reasonToAdd = "";
       if (type === "LONG") {
-        // For LONG positions:
-        // 1. Gap must be > threshold
-        // 2. Current RSI must be lower than open RSI (more oversold)
-        // 3. Must be in loss
-        console.log(`${this.config.atrTradeMultiplier} * ${avgAtr} AND ATR ${atr}`);
-        if (
-          priceGapPercent > this.config.breakEvenThreshold &&
-          rsi < this.currentPosition.openRsi &&
-          currentPnL < 0 &&
-          (this.config.atrTradeMultiplier > 0 ? atr >= this.config.atrTradeMultiplier * avgAtr : true)
-        ) {
+        const gapCondition = priceGapPercent > this.config.breakEvenThreshold;
+        const rsiCondition = rsi < this.currentPosition.openRsi;
+        const profitCondition = currentPnL < 0;
+        const atrCondition = this.config.atrTradeMultiplier > 0 ? atr >= this.config.atrTradeMultiplier * avgAtr : true;
+        if (gapCondition && rsiCondition && profitCondition && atrCondition) {
           shouldAddPosition = true;
           reasonToAdd = `gap ${priceGapPercent.toFixed(2)}% > ${this.config.breakEvenThreshold}%, RSI ${rsi.toFixed(
             2,
           )} < ${this.currentPosition.openRsi} (open), PnL: ${currentPnL.toFixed(2)} USDT`;
         }
       } else {
-        if (
-          priceGapPercent > this.config.breakEvenThreshold &&
-          rsi > this.currentPosition.openRsi &&
-          currentPnL < 0 &&
-          (this.config.atrTradeMultiplier > 0 ? atr >= this.config.atrTradeMultiplier * avgAtr : true)
-        ) {
+        const gapCondition = priceGapPercent > this.config.breakEvenThreshold;
+        const rsiCondition = rsi > this.currentPosition.openRsi;
+        const profitCondition = currentPnL < 0;
+        const atrCondition = this.config.atrTradeMultiplier > 0 ? atr >= this.config.atrTradeMultiplier * avgAtr : true;
+        if (gapCondition && rsiCondition && profitCondition && atrCondition) {
           shouldAddPosition = true;
           reasonToAdd = `gap ${priceGapPercent.toFixed(2)}% > ${this.config.breakEvenThreshold}%, RSI ${rsi.toFixed(
             2,
@@ -267,15 +257,7 @@ export class RsiTradeBasedModel {
       // Execute position addition if conditions are met
       if (shouldAddPosition && delayMet) {
         this.averagePosition(price, addPositionSize, timestamp, rsi, atr, avgAtr); // Use addPositionSize instead
-        // console.log(
-        //   `Adding to ${type} position at ${this.formatPrice(price)}, RSI: ${rsi.toFixed(
-        //     2,
-        //   )}, Adding: ${addPositionSize} USDT, Reason: ${reasonToAdd}, Time since last entry: ${readableTimeSinceLastEntry}`,
-        // );
       } else if (shouldAddPosition) {
-        // console.log(
-        //   `Wanted to add to ${type} position but delay not met. Time since last entry: ${readableTimeSinceLastEntry}, required: ${readableRequiredDelay}`,
-        // );
       }
     }
   }
@@ -396,35 +378,6 @@ export class RsiTradeBasedModel {
 
     // Calculate profit percentage relative to position size
     const profitPercent = (profit / currentSize) * 100;
-
-    // Get minimum profit percentage from config (default to 1% if not specified)
-    const minProfitPercent = this.config.minProfitPercent ?? 1.0;
-
-    // Double-check that we're closing with a profit
-    if (profitPercent < minProfitPercent) {
-      console.log(`Not closing ${type} position - profit ${profitPercent.toFixed(2)}% < ${minProfitPercent}% minimum`);
-
-      // If we have an exit signal but insufficient profit, add to position instead (if we have capital)
-      const fixedPositionSize = this.config.fixedPositionSize ?? 10;
-      if (this.currentCapital >= fixedPositionSize / this.config.leverage && profitPercent < 0) {
-        // Only add to LONG positions if RSI is below 50
-        // Only add to SHORT positions if RSI is above 50
-        const rsiConditionMet = (type === "LONG" && rsi <= 50) || (type === "SHORT" && rsi >= 50);
-
-        if (rsiConditionMet) {
-          console.log(`Instead of closing at a loss, adding ${fixedPositionSize} USDT to ${type} position at ${price}`);
-          this.averagePosition(price, fixedPositionSize, timestamp, rsi, atr, avgAtr);
-        } else {
-          console.log(
-            `Not adding to ${type} position because RSI ${rsi.toFixed(2)} is not favorable (need ${
-              type === "LONG" ? "<= 50" : ">= 50"
-            })`,
-          );
-        }
-      }
-
-      return; // Don't close the position
-    }
 
     // Update the trade with closing data
     this.currentPosition.closeTimestamp = timestamp;
